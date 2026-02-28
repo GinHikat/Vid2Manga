@@ -16,4 +16,8 @@ data/
 
 *.jfif
 
+*.srt
+
+*.mp3
+
 .pytest_cache

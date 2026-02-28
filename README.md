@@ -80,6 +80,8 @@ git clone https://github.com/GinHikat/Vid2Manga.git
 cd Vid2Manga
 
 pip install -r requirements.txt
+
+cp .env.example .env
 ```
 
 ### 2. Backend Setup
@@ -140,4 +142,4 @@ pytest tests/system     # End-to-end flow tests
 * **Configuration**: Check `App/backend/core/config.py` for path configurations.
 * **Data Storage**:
   * Uploaded videos are stored in `input/`.
-  * Processed video/audio/text are stored
+  * Processed video/audio/text are stored/served from `output/`.
