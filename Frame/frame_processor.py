@@ -60,13 +60,12 @@ def stylize_pipeline_a(image_path, output_path=None):
     result = cv2.bitwise_and(enhanced_gray, enhanced_gray, mask=edges)
 
     # Convert back to RGB for matplotlib/PIL rendering
-    result = cv2.cvtColor(result, cv2.COLOR_BGR2RGB)
+    result = cv2.cvtColor(result, cv2.COLOR_GRAY2RGB)
 
     if output_path:
         cv2.imwrite(output_path, cv2.cvtColor(result, cv2.COLOR_RGB2BGR))
         
     return result
-
 
 def stylize_pipeline_b(image_path, output_path=None):
     """
@@ -77,13 +76,13 @@ def stylize_pipeline_b(image_path, output_path=None):
     if img is None:
         return None
 
-    # Step 1: Smoothing (Bilateral Filter)
+    # Smoothing (Bilateral Filter)
     # Bilateral filter smooths flat regions while preserving edges. We run it multiple times for a painted look.
     color = img.copy()
     for _ in range(3): 
         color = cv2.bilateralFilter(color, d=9, sigmaColor=75, sigmaSpace=75)
 
-    # Step 2: Edge Detection
+    # Edge Detection
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     
     # Use median blur to reduce noise before edge detection
@@ -105,7 +104,6 @@ def stylize_pipeline_b(image_path, output_path=None):
         cv2.imwrite(output_path, cv2.cvtColor(result, cv2.COLOR_RGB2BGR))
         
     return result
-
 
 def stylize_pipeline_c(image_path, output_path=None):
     """
@@ -131,11 +129,11 @@ def stylize_pipeline_c(image_path, output_path=None):
 
 # --- Helper conversion for Pillow (so we can use it with create_manga_page) ---
 def cv2_to_pil(cv2_image):
-    """Converts a loaded OpenCV image (BGR or Gray) to a PIL Image (RGB)"""
+    """Converts a loaded OpenCV image (RGB or Gray) to a PIL Image (RGB)"""
     if len(cv2_image.shape) == 2:
         # Grayscale
         rgb_image = cv2.cvtColor(cv2_image, cv2.COLOR_GRAY2RGB)
     else:
-        # BGR
-        rgb_image = cv2.cvtColor(cv2_image, cv2.COLOR_BGR2RGB)
+        # Image is already RGB from the stylization pipelines
+        rgb_image = cv2_image
     return Image.fromarray(rgb_image)
