@@ -1,0 +1,31 @@
+
+.language-selector {
+    margin-top: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background-color: rgba(255, 255, 255, 0.05);
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+}
+
+.language-selector label {
+    font-size: 0.9rem;
+    color: #aaa;
+}
+
+.language-selector select {
+    background-color: transparent;
+    color: var(--text-color);
+    border: none;
+    font-family: inherit;
+    font-size: 0.9rem;
+    cursor: pointer;
+    outline: none;
+}
+
+.language-selector select option {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+}

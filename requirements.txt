@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+python-multipart
+ffmpeg-python
+openai-whisper
+opencv-python
+
+pytest
+pytest-asyncio
+httpx
