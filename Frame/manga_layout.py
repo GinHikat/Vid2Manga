@@ -144,3 +144,90 @@ def create_manga_page(images, frames, width=1000, height=1400, bg_color="white")
         
     return page
 
+def create_bubble_mask(image_shape, axes, character_mask=None, proximity_target=None, num_persons=1):
+    """
+    Generates a binary segmentation mask for an oval speech bubble.
+    If character_mask is provided, finds the optimal position that avoids characters.
+    
+    Args:
+        image_shape: (height, width) or (height, width, channels) of the frame.
+        axes: (width, height) specifying the full width and height of the oval bubble.
+        character_mask: A binary mask (H, W) where 255 indicates characters and 0 is background.
+        proximity_target: Optional (x, y) tuple. If provided, penalizes positions farther from this target 
+                          to keep the bubble as close to the target as possible without overlapping the character.
+        num_persons: Optional int. The number of people in the frame. Used to adjust distance penalties 
+                     so bubbles from multiple people don't fight too heavily for non-character space.
+        
+    Returns:
+        final_mask: (H, W) binary mask of the placed bubble (255 for bubble, 0 for background).
+        center: (x, y) chosen center of the bubble.
+    """
+    h, w = image_shape[:2]
+    bw, bh = axes
+    
+    # base ellipse mask (bounding box size)
+    # The bounding box of the ellipse is exactly (bw, bh)
+    bubble_template = np.zeros((bh, bw), dtype=np.uint8)
+    # cv2.ellipse needs center (x,y) and axes (half_width, half_height)
+    cv2.ellipse(bubble_template, (bw // 2, bh // 2), (bw // 2, bh // 2), 0, 0, 360, 255, -1)
+    
+    if character_mask is not None:
+        # character_mask should be uint8, 255 for character, 0 for background
+        # Ensure mask is binary and uint8
+        character_mask = (character_mask > 0).astype(np.uint8) * 255
+        
+        # Use matchTemplate to calculate the overlap between the character mask and the bubble template
+        # cv2.TM_CCORR computes the sum of the element-wise multiplication of template and image
+        # which effectively counts how many white pixels overlap.
+        overlap_map = cv2.matchTemplate(character_mask, bubble_template, cv2.TM_CCORR)
+        
+        # Apply a distance penalty to keep the bubble close to the proximity_target
+        if proximity_target is not None:
+            px, py = proximity_target
+            # Create a coordinate grid mapping the overlapping centers
+            xs = np.arange(overlap_map.shape[1]) + bw // 2
+            ys = np.arange(overlap_map.shape[0]) + bh // 2
+            xv, yv = np.meshgrid(xs, ys)
+            
+            # Calculate Euclidean distance from each center to the target
+            dist = np.sqrt((xv - px)**2 + (yv - py)**2)
+            
+            # The penalty weight should balance between avoiding character overlap and staying close to the person.
+            # Base penalty weight on the number of people to allow more overlap in crowded frames 
+            # while keeping bubbles next to the speaker.
+            penalty_weight = (255.0 * bw * bh) * (0.005 / max(1, num_persons)) 
+            penalty_map = dist * penalty_weight
+            
+            # Constrain bubbles to stay within the frame boundaries (don't get clipped)
+            # This is done by adding a massive infinite penalty to edge positions
+            pad_x = bw // 2 + 5
+            pad_y = bh // 2 + 5
+            
+            # Penalize Left and Right boundaries
+            if pad_x < overlap_map.shape[1]:
+                overlap_map[:, :pad_x] += float('inf')
+                overlap_map[:, -pad_x:] += float('inf')
+            # Penalize Top and Bottom boundaries
+            if pad_y < overlap_map.shape[0]:
+                overlap_map[:pad_y, :] += float('inf')
+                overlap_map[-pad_y:, :] += float('inf')
+                
+            overlap_map += penalty_map.astype(np.float32)
+            
+        # Find the position with the minimum overlap
+        min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(overlap_map)
+        
+        # min_loc is (x, y) of the top-left corner of the template
+        top_left_x, top_left_y = min_loc
+        center_x = top_left_x + bw // 2
+        center_y = top_left_y + bh // 2
+    else:
+        # Default to center-top of the image if no mask is provided
+        center_x = w // 2
+        center_y = h // 4
+        
+    # Generate the final mask in the full image size
+    final_mask = np.zeros((h, w), dtype=np.uint8)
+    cv2.ellipse(final_mask, (center_x, center_y), (bw // 2, bh // 2), 0, 0, 360, 255, -1)
+    
+    return final_mask, (center_x, center_y)

@@ -4,6 +4,7 @@ python-multipart
 ffmpeg-python
 openai-whisper
 opencv-python
+transformers
 
 pytest
 pytest-asyncio

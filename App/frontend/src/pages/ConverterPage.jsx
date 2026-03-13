@@ -4,7 +4,7 @@ import ResultDisplay from "../components/ResultDisplay";
 import "../css/App.css";
 import "../css/Nav.css";
 
-import { Video, Home as HomeIcon } from "lucide-react";
+import { Video, Home as HomeIcon, Columns } from "lucide-react";
 import { Link } from "react-router-dom";
 
 function ConverterPage() {
@@ -37,9 +37,14 @@ function ConverterPage() {
   return (
     <div className="converter-page app-container">
       <header className="app-header">
-        <Link to="/" className="home-nav-btn">
-          <HomeIcon size={20} /> Home
-        </Link>
+        <div className="nav-container">
+          <Link to="/" className="home-nav-btn">
+            <HomeIcon size={20} /> Home
+          </Link>
+          <Link to="/manga-generator" className="home-nav-btn">
+            <Columns size={20} /> Manga Generator
+          </Link>
+        </div>
         <div className="logo">
           <Video className="logo-icon" size={32} />
           <h1>Vid2Manga</h1>

@@ -1,18 +1,23 @@
-
-.home-nav-btn {
+.nav-container {
+  display: flex;
+  gap: 1rem;
   position: absolute;
   top: 1rem;
   left: 1rem;
+}
+
+.home-nav-btn {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   color: #aaa;
   text-decoration: none;
   font-weight: 500;
-  transition: color 0.2s;
+  transition: all 0.2s;
   padding: 0.5rem 1rem;
   border-radius: 6px;
   background-color: rgba(255, 255, 255, 0.05);
+  font-size: 0.9rem;
 }
 
 .home-nav-btn:hover {

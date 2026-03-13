@@ -4,6 +4,8 @@
 
 __pycache__/
 
+images/
+
 data/
 
 *.mp4
@@ -15,9 +17,5 @@ data/
 *.jpg
 
 *.jfif
-
-*.srt
-
-*.mp3
 
 .pytest_cache

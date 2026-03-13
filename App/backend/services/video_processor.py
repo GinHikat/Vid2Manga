@@ -5,11 +5,12 @@ from fastapi import UploadFile, HTTPException
 from core.config import settings
 import traceback
 import ffmpeg
-from Speech.process_audio import split_video_audio, speech2text
-from services.task_manager import update_task_status, update_task_error, update_task_result, TaskStatus
 
 if settings.BASE_DIR not in sys.path:
     sys.path.append(settings.BASE_DIR)
+
+from Speech.process_audio import split_video_audio, speech2text
+from services.task_manager import update_task_status, update_task_error, update_task_result, TaskStatus
 
 async def process_video(file: UploadFile) -> tuple[str, str, str | None]:
     if not file.content_type.startswith("video/"):

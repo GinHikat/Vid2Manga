@@ -1,14 +1,15 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from core.config import settings
-from api.v1.api import router as api_router
-import uvicorn
 import sys
 import os
+from core.config import settings
 
 if settings.BASE_DIR not in sys.path:
     sys.path.append(settings.BASE_DIR)
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from api.v1.api import router as api_router
+import uvicorn
 
 app = FastAPI(title=settings.PROJECT_NAME, version=settings.PROJECT_VERSION)
 

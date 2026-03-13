@@ -33,7 +33,7 @@ def frame_clear(image_path, blur_threshold=100.0, brightness_threshold=50):
 
     return True, f"Clear (Blur Score: {laplacian_var:.2f}, Brightness: {avg_brightness:.2f})"
 
-def stylize_pipeline_a(image_path, output_path=None):
+def stylize_a(image_path, output_path=None):
     """
     Pipeline A: Classic Black & White Manga (OpenCV Only)
     High contrast, sharp edges, grayscale.
@@ -67,7 +67,7 @@ def stylize_pipeline_a(image_path, output_path=None):
         
     return result
 
-def stylize_pipeline_b(image_path, output_path=None):
+def stylize_b(image_path, output_path=None):
     """
     Pipeline B: Anime-style Coloring / Cel-shaded (OpenCV)
     Smoothed colors with sharp edges.
@@ -105,7 +105,7 @@ def stylize_pipeline_b(image_path, output_path=None):
         
     return result
 
-def stylize_pipeline_c(image_path, output_path=None):
+def stylize_c(image_path, output_path=None):
     """
     Pipeline C: Neural Style Transfer / Edge-Preserving Filter Simulation
     Since running a full deep learning model (like AnimeGAN) requires downloading weights 
@@ -137,3 +137,66 @@ def cv2_to_pil(cv2_image):
         # Image is already RGB from the stylization pipelines
         rgb_image = cv2_image
     return Image.fromarray(rgb_image)
+
+def create_manga_pipeline(images, stylize_style='c', width=1000, height=1400, bg_color="white", seed=None):
+    """
+    Complete pipeline to process k original images, stylize them, and fit them into a manga layout.
+    
+    Args:
+        images: List of image file paths (strings).
+        stylize_style: The stylization chosen ('a', 'b', or 'c').
+        width: Width of the final manga page.
+        height: Height of the final manga page.
+        bg_color: Background color of the manga page.
+        seed: Random seed for layout generation.
+        
+    Returns:
+        A PIL Image representing the generated manga page.
+    """
+        
+    processed_images = []
+    
+    for path in image_paths:
+        # Quality checking step (Log a warning if image is blurry or dark)
+        is_clear, reason = frame_clear(path)
+        if not is_clear:
+            print(f"Warning - Frame quality issue for {os.path.basename(path)}: {reason}")
+            
+        # Stylization step
+        if stylize_style == 'a':
+            processed_cv2 = stylize_a(path)
+        elif stylize_style == 'b':
+            processed_cv2 = stylize_b(path)
+        elif stylize_style == 'c':
+            processed_cv2 = stylize_c(path)
+        else:
+            raise ValueError("Invalid stylize_style. Must be 'a', 'b', or 'c'.")
+            
+        if processed_cv2 is None:
+            raise FileNotFoundError(f"Failed to load or process image: {path}")
+            
+        # Convert to PIL Image for the layout step
+        pil_img = cv2_to_pil(processed_cv2)
+        processed_images.append(pil_img)
+
+    # Generate layout frames
+    # generate_manga_layout creates 8 frames by default
+    frames = generate_manga_layout(
+        width=width, 
+        height=height, 
+        num_frames=len(image_paths), 
+        seed=seed,
+        margin=8,
+        std_dev=0.05
+    )
+    
+    # Fit images into layout to create the final manga page
+    manga_page = create_manga_page(
+        images=processed_images, 
+        frames=frames, 
+        width=width, 
+        height=height, 
+        bg_color=bg_color
+    )
+    
+    return manga_page

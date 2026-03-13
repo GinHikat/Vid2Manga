@@ -29,6 +29,7 @@ body {
 }
 
 .app-header {
+  position: relative;
   padding: 2rem 1rem;
   background-color: var(--card-bg);
   border-bottom: 1px solid var(--border-color);

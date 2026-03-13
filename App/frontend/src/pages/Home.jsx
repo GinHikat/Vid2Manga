@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { Video, Star, Zap, PenTool } from "lucide-react";
+import { Video, Star, Zap, PenTool, Columns } from "lucide-react";
 import "../css/Home.css"; // We'll create this CSS file next
 
 function Home() {
@@ -16,11 +16,17 @@ function Home() {
           </p>
           <div className="hero-actions">
             <Link to="/convert" className="cta-button primary">
-              Start Creating <Video size={20} />
+              Video Converter <Video size={20} />
             </Link>
-            <a href="#features" className="cta-button secondary">
-              Learn More
-            </a>
+            <Link
+              to="/manga-generator"
+              className="cta-button primary"
+              style={{
+                background: "linear-gradient(135deg, #a855f7 0%, #6366f1 100%)",
+              }}
+            >
+              Manga Generator <Columns size={20} />
+            </Link>
           </div>
         </div>
       </header>

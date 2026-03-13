@@ -1,13 +1,13 @@
 # Vid2Manga
 
-Vid2Manga is an innovative application designed to bridge the gap between video content and manga-style storytelling. By leveraging advanced video processing and speech-to-text technologies, Vid2Manga extracts audio and visual components from video files to create a foundation for manga generation.
+Vid2Manga is an innovative application designed to bridge the gap between video content and manga-style storytelling. By leveraging advanced video processing, image stylization, AI segmentation, and layout generation, Vid2Manga extracts audio and visual components from videos and translates them into a cohesive manga reading experience.
 
 **Key Features:**
 
-* **Video Processing**: Automatically separates video and audio tracks from uploaded files.
-* **Speech-to-Text**: Utilizes OpenAI's Whisper model for high-accuracy transcription of dialogue.
-* **Frame Stylization & Manga Generation**: Extracts video frames, applies stylization pipelines, and arranges them into manga layouts.
-* **Modern Interactive UI**: A responsive React-based frontend for seamless user interaction.
+* **Video Converter**: Automatically separates video and audio tracks from uploaded files, utilizing OpenAI's Whisper model for high-accuracy transcription of dialogue.
+* **Manga Frame Generator**: Upload multiple images, choose stylization pipelines (Classic B&W, Anime Cel-shaded, or Soft Comic), and generate proportional, multi-page manga layouts dynamically.
+* **AI Human Segmentation**: Apply Mask2Former instance segmentation to detect and highlight characters with high-visibility red masks on your manga panels.
+* **Modern Interactive UI**: A responsive, premium React-based frontend for seamless user interactions and fast asset generation.
 
 ---
 
@@ -15,50 +15,34 @@ Vid2Manga is an innovative application designed to bridge the gap between video 
 
 The system is built as a modern full-stack application:
 
-### 1. Frontend (Client)
+### 1. Technology Stack
 
-* **Framework**: React (Vite)
-* **Key Libraries**: `axios` for API communication, `lucide-react` for UI icons, `react-router-dom` for navigation.
-* **Capabilities**:
-  * User-friendly video upload interface.
-  * Real-time status tracking of processing tasks.
-  * Playback of processed video and audio.
-  * Display of transcribed text.
+| Technology               | Category                          |
+| ------------------------ | --------------------------------- |
+| **React (Vite)**   | Frontend                          |
+| **FastAPI**        | Backend                           |
+| **OpenCV & PIL**   | Image Processing                  |
+| **Mask2Former**    | Human Segmentation                |
+| **OpenAI Whisper** | Audio Processing / Speech-to-Text |
+| **FFmpeg**         | Media Processing                  |
 
-### 2. Backend (Server)
-
-* **Framework**: FastAPI (Python)
-* **Core Components**:
-  * **API Layer**: RESTful endpoints for file upload (`/convert`) and status checking (`/status/{task_id}`).
-  * **Task Manager**: In-memory state management for tracking background processes (Pending -> Processing -> Completed/Failed).
-  * **Service Layer**: Orchestrates video splitting (via `ffmpeg`) and transcription.
-* **Processing Engine**:
-  * **FFmpeg**: Robust tool for splitting video containers into raw video streams and audio (WAV) files.
-  * **OpenAI Whisper**: State-of-the-art model for transcribing audio to text with timestamp alignment.
-  * **Image Processing**: OpenCV and PIL for extracting frames, applying stylization pipelines, and creating manga layouts.
-  * **Web Crawling**: Selenium integrated for automated data gathering.
-
-### 3. Directory Structure
+### 2. Directory Structure
 
 ```text
 Vid2Manga/
-├── .env
-├── .env.example
-├── .gitignore
 ├── App/                # Full-stack Web Application
-│   ├── backend/        # FastAPI Server
-│   └── frontend/       # React Application
-├── Frame/              # Frame extraction and manga stylization pipelines
-│   └── images/
-├── README.md
-├── Speech/             # Core Speech Processing Modules
-│   ├── input/
-│   └── output/
+│   ├── backend/        # FastAPI Server, API endpoints, Task Managers, Services
+│   └── frontend/       # React Application (Pages: Home, ConverterPage, MangaGenerator)
+├── Frame/              # Core Image Algorithms
+│   ├── detection.py    # Human instance segmentation
+│   ├── frame_processor.py # OpenCV aesthetic pipelines (B&W, Cel-shaded)
+│   └── manga_layout.py # Smart, proportional layout rendering
+├── Speech/             # Audio Split & Whisper STT
 ├── input/              # Raw uploaded files (server-side)
-├── output/             # Processed assets (server-side)
-│   ├── audio/
-│   └── video/
-└── requirements.txt
+├── output/             # Processed assets (video clips, audios, manga pages)
+├── .env
+├── requirements.txt
+└── README.md
 ```
 
 ---
@@ -76,12 +60,10 @@ Follow these steps to set up the project locally.
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/GinHikat/Vid2Manga.git
+git clone <repository-url>
 cd Vid2Manga
 
 pip install -r requirements.txt
-
-cp .env.example .env
 ```
 
 ### 2. Backend Setup
@@ -137,9 +119,6 @@ pytest tests/system     # End-to-end flow tests
 
 ## Other Notes
 
-* **FFmpeg Requirement**: Ensure `ffmpeg` is accessible from your command line. The backend relies on it for media processing. If you encounter "FileNotFoundError" related to `ffmpeg`, check your PATH environment variable.
-* **Model Performance**: The application uses the `base` model of Whisper by default. First-time execution may take longer as it downloads the model weights.
-* **Configuration**: Check `App/backend/core/config.py` for path configurations.
-* **Data Storage**:
-  * Uploaded videos are stored in `input/`.
-  * Processed video/audio/text are stored/served from `output/`.
+* **FFmpeg Requirement**: Ensure `ffmpeg` is accessible from your command line.
+* **AI Models**: The first time you use Transcription or Segmentation, it will download the respective weights (OpenAI Whisper or Mask2Former) which might take a bit of time depending on your connection.
+* **Storage**: Uploaded media resides in `input/` and final artifacts are in `output/`.
