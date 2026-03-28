@@ -23,3 +23,5 @@ data/
 *.jfif
 
 .pytest_cache
+
+secrets/

@@ -1,9 +1,10 @@
 import ffmpeg
 import os
 import sys
-import whisper
+# import whisper # Kept for reference or fallback
 
-model = whisper.load_model("base", device = 'cpu')
+# Optional: Fallback model if GCP fails or isn't configured
+# model = whisper.load_model("base", device = 'cpu')
 
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if project_root not in sys.path:
@@ -38,7 +39,8 @@ def split_video_audio(input_file_path):
     output_audio = os.path.join(audio_dir, f'{file_name}.wav')
     output_video = os.path.join(video_dir, f'{file_name}.mp4')
 
-    ffmpeg.input(input_file_path).output(output_audio).overwrite_output().run(capture_stdout=True, capture_stderr=True)
+    # Extract 16kHz Mono WAV for GCP Speech-to-Text
+    ffmpeg.input(input_file_path).output(output_audio, ar=16000, ac=1).overwrite_output().run(capture_stdout=True, capture_stderr=True)
 
     ffmpeg.input(input_file_path).output(output_video, an=None).overwrite_output().run()
 
@@ -57,11 +59,24 @@ def speech2text(input_audio_path, language = 'en'):
 
     input_audio_path = os.path.join(audio_dir, input_audio_path)
 
-    result = model.transcribe(
-        input_audio_path,
-        language=language,
-        word_timestamps = True
-    )
+    # Use GCP for STT
+    from Speech.gcp_speech import transcribe_gcp
+    
+    # Map simple language codes to GCP format if necessary
+    gcp_lang = language
+    if len(language) == 2:
+        # Simple mapping for common ones
+        mapping = {"en": "en-US", "vi": "vi-VN", "ja": "ja-JP", "zh": "zh-CN"}
+        gcp_lang = mapping.get(language.lower(), f"{language.lower()}-{language.upper()}")
+
+    try:
+        result = transcribe_gcp(input_audio_path, language_code=gcp_lang)
+    except Exception as e:
+        print(f"GCP Transcription failed: {e}")
+        print("Falling back to Whisper if available...")
+        # Fallback to Whisper if you uncomment the model load above
+        # result = model.transcribe(input_audio_path, language=language, word_timestamps=True)
+        raise e
 
     return result
 
