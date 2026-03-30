@@ -25,3 +25,5 @@ data/
 .pytest_cache
 
 secrets/
+
+notebook/*
