@@ -296,7 +296,8 @@ const MangaGenerator = () => {
                   key={idx}
                   className="result-display-area"
                   style={{
-                    width: "100%",
+                    width: "auto",
+                    maxWidth: "100%",
                     display: "flex",
                     flexDirection: "column",
                     alignItems: "center",
