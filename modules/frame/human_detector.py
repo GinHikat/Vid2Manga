@@ -1,19 +1,11 @@
 import os
-import sys
-
-project_root = os.path.abspath(os.path.join(os.getcwd(), ".."))
-if project_root not in sys.path:
-    sys.path.append(project_root)
-
-from transformers import AutoImageProcessor, Mask2FormerForUniversalSegmentation, Mask2FormerImageProcessor
-from PIL import Image
-import requests
 import torch
-import matplotlib.pyplot as plt
 import numpy as np
-import cv2
+from PIL import Image
+from transformers import Mask2FormerForUniversalSegmentation, Mask2FormerImageProcessor
 
 class PersonSegmenter:
+    """Handles person segmentation using Mask2Former."""
     def __init__(self, checkpoint=None, device=None):
         self.device = device if device else ("cuda" if torch.cuda.is_available() else "cpu")
         self.checkpoint = checkpoint or "qubvel-hf/finetune-instance-segmentation-ade20k-mini-mask2former"

@@ -11,13 +11,15 @@ function ConverterPage() {
   const [videoUrl, setVideoUrl] = useState(null);
   const [audioUrl, setAudioUrl] = useState(null);
   const [text, setText] = useState(null);
+  const [segments, setSegments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const handleUploadSuccess = (video, audio, extractedText) => {
+  const handleUploadSuccess = (video, audio, extractedText, extractedSegments) => {
     setVideoUrl(video);
     setAudioUrl(audio);
     setText(extractedText);
+    setSegments(extractedSegments || []);
     setLoading(false);
   };
 
@@ -70,6 +72,7 @@ function ConverterPage() {
                 videoUrl={videoUrl}
                 audioUrl={audioUrl}
                 text={text}
+                segments={segments}
               />
             </section>
           )}

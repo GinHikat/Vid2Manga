@@ -1,6 +1,6 @@
 
 import pytest
-from services.task_manager import create_task, get_task, update_task_status, update_task_result, update_task_error, tasks, TaskStatus, Task
+from modules.task_manager import create_task, get_task, update_task_status, update_task_result, update_task_error, tasks, TaskStatus, Task
 
 def test_create_task():
     # Clear existing tasks

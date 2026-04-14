@@ -31,18 +31,16 @@ The system is built as a modern full-stack application:
 ```text
 Vid2Manga/
 ├── App/                # Full-stack Web Application
-│   ├── backend/        # FastAPI Server, API endpoints, Task Managers, Services
-│   └── frontend/       # React Application (Pages: Home, ConverterPage, MangaGenerator)
-├── Frame/              # Core Image Algorithms
-│   ├── detection.py    # Human instance segmentation
-│   ├── frame_processor.py # OpenCV aesthetic pipelines (B&W, Cel-shaded)
-│   └── manga_layout.py # Smart, proportional layout rendering
-├── Speech/             # Audio Split & Whisper STT
-├── input/              # Raw uploaded files (server-side)
-├── output/             # Processed assets (video clips, audios, manga pages)
-├── .env
-├── requirements.txt
-└── README.md
+│   ├── backend/        # FastAPI Server
+│   └── frontend/       # React (Vite) Application
+├── modules/            # Business Logic & Processing Services
+│   ├── crawling/       # Selenium-based web scrapers
+│   ├── frame/          # Image processing & Manga layout
+│   └── speech/         # Audio processing & Transcription
+├── notebook/           # Research and Development notebooks
+├── .env                # Environment variables
+├── requirements.txt    # Python dependencies
+└── README.md           # Project documentation
 ```
 
 ---

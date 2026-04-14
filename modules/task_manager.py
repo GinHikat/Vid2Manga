@@ -15,8 +15,7 @@ class Task(BaseModel):
     result: Optional[Dict[str, Any]] = None
     error: Optional[str] = None
 
-# Simple in-memory storage
-# In a production app, use Redis or a database
+# In-memory task storage
 tasks: Dict[str, Task] = {}
 
 def create_task() -> Task:

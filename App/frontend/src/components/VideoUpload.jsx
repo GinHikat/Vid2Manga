@@ -106,8 +106,8 @@ const VideoUpload = ({
             ? result.audio_url
             : `${baseUrl}${result.audio_url}`;
 
-          // Pass text result as well
-          onUploadSuccess(video, audio, result.text);
+          // Pass text and segments result
+          onUploadSuccess(video, audio, result.text, result.segments);
         } else if (task.status === "failed") {
           clearInterval(interval);
           onError(`Processing failed: ${task.error}`);

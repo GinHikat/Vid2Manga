@@ -6,8 +6,8 @@ import io
 
 def test_convert_video_endpoint(client):
     # Mock the internal service calls to avoid real processing
-    with patch("services.video_processor.split_video_audio") as mock_split, \
-         patch("services.video_processor.speech2text") as mock_speech:
+    with patch("modules.video_processor.split_video_audio") as mock_split, \
+         patch("modules.video_processor.speech2text") as mock_speech:
          
         # Setup mocks
         mock_split.return_value = ("output/audio.wav", "output/video.mp4")

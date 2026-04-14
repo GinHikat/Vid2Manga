@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 import sys
 
 import whisper
-from Speech.process_audio import split_video_audio, speech2text, model
+from modules.speech.process_audio import split_video_audio, speech2text, model
 
 # The model is the mock because of sys.modules mocking
 # Since model = whisper.load_model(...), model is the result of that call

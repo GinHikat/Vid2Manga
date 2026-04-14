@@ -3,7 +3,7 @@ import { Download, Film, Music, FileText } from "lucide-react";
 import "../css/ResultDisplay.css";
 import "../css/TextResult.css";
 
-const ResultDisplay = ({ videoUrl, audioUrl, text }) => {
+const ResultDisplay = ({ videoUrl, audioUrl, text, segments }) => {
   return (
     <div className="result-display-container">
       <h2>Conversion Results</h2>
@@ -42,25 +42,41 @@ const ResultDisplay = ({ videoUrl, audioUrl, text }) => {
         </div>
       </div>
 
-      {text && (
-        <div className="text-result-container">
-          <div className="result-card text-card">
-            <div className="card-header">
-              <FileText size={24} />
-              <h3>Extracted Text</h3>
-            </div>
-            <div className="text-content">
-              <p>{text}</p>
-            </div>
+      <div className="text-result-container">
+        <div className="result-card text-card">
+          <div className="card-header">
+            <FileText size={24} />
+            <h3>Speech Breakdown</h3>
+          </div>
+          
+          <div className="speech-timeline">
+            {segments && segments.length > 0 ? (
+              <div className="segments-list">
+                {segments.map((segment, idx) => (
+                  <div key={idx} className="segment-item" title={`${segment.start.toFixed(1)}s - ${segment.end.toFixed(1)}s`}>
+                    <div className="segment-speaker">{segment.speaker}</div>
+                    <div className="segment-text">{segment.text}</div>
+                    <div className="segment-time">{segment.start.toFixed(1)}s</div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-content">
+                <p>{text || "No speech detected or processed."}</p>
+              </div>
+            )}
+          </div>
+
+          {text && (
             <button
               className="copy-btn"
               onClick={() => navigator.clipboard.writeText(text)}
             >
-              Copy Text
+              Copy Full Transcript
             </button>
-          </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 };

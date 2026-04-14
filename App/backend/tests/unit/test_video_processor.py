@@ -1,14 +1,14 @@
 
 import pytest
 from unittest.mock import MagicMock, patch
-from services.video_processor import process_video_task
-from services.task_manager import TaskStatus, get_task, create_task, tasks
+from modules.frame.video_processor import process_video_task
+from modules.task_manager import TaskStatus, get_task, create_task, tasks
 import os
 
 @pytest.fixture
 def mock_dependencies():
-    with patch("services.video_processor.split_video_audio") as mock_split, \
-         patch("services.video_processor.speech2text") as mock_speech:
+    with patch("modules.video_processor.split_video_audio") as mock_split, \
+         patch("modules.video_processor.speech2text") as mock_speech:
         yield mock_split, mock_speech
 
 @pytest.mark.asyncio

@@ -1,3 +1,7 @@
+* {
+  box-sizing: border-box;
+}
+
 :root {
   --primary-color: #646cff;
   --primary-hover: #535bf2;
@@ -71,10 +75,10 @@ body {
 
 .content-wrapper {
   width: 100%;
-  max-width: 900px;
+  max-width: 1200px;
   display: flex;
   flex-direction: column;
-  gap: 3rem;
+  gap: 1.5rem;
 }
 
 .upload-section {
