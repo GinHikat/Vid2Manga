@@ -1,5 +1,7 @@
 import React, { useState, useRef } from "react";
 import axios from "axios";
+import { API_BASE_URL } from "../config";
+
 import { UploadCloud, FileVideo, Loader2, CheckCircle } from "lucide-react";
 import "../css/VideoUpload.css";
 import "../css/LanguageSelector.css";
@@ -66,7 +68,7 @@ const VideoUpload = ({
     try {
       // Assuming backend is running on localhost:8000
       const response = await axios.post(
-        "http://localhost:8000/convert",
+        `${API_BASE_URL}/convert`,
         formData,
         {
           headers: {
@@ -89,7 +91,7 @@ const VideoUpload = ({
     const interval = setInterval(async () => {
       try {
         const statusRes = await axios.get(
-          `http://localhost:8000/status/${taskId}`,
+          `${API_BASE_URL}/status/${taskId}`,
         );
         const task = statusRes.data;
 
@@ -98,7 +100,7 @@ const VideoUpload = ({
           const result = task.result;
 
           // Construct full URLs if backend returns relative paths
-          const baseUrl = "http://localhost:8000";
+          const baseUrl = API_BASE_URL.replace(/\/api$/, "");
           const video = result.video_url.startsWith("http")
             ? result.video_url
             : `${baseUrl}${result.video_url}`;

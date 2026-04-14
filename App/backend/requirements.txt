@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+python-multipart
+ffmpeg-python
+openai-whisper
+opencv-python
+transformers
+google-cloud-speech
+google-cloud-storage
+python-dotenv
+
+pytest
+pytest-asyncio
+httpx

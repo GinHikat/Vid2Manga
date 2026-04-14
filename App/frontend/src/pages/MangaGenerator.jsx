@@ -1,5 +1,7 @@
 import React, { useState, useRef } from "react";
 import axios from "axios";
+import { API_BASE_URL } from "../config";
+
 import { Link } from "react-router-dom";
 import {
   Upload,
@@ -68,14 +70,15 @@ const MangaGenerator = () => {
 
     try {
       const response = await axios.post(
-        "http://localhost:8000/manga-layout",
+        `${API_BASE_URL}/manga-layout`,
         formData,
         {
           headers: { "Content-Type": "multipart/form-data" },
         },
       );
 
-      const baseUrl = "http://localhost:8000";
+      const baseUrl = API_BASE_URL.replace(/\/api$/, "");
+
       const mangaUrls = response.data.manga_urls.map((url) =>
         url.startsWith("http") ? url : `${baseUrl}${url}`,
       );
