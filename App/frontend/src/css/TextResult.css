@@ -56,8 +56,13 @@
   background: rgba(255, 255, 255, 0.08);
   transform: translateX(8px);
   border-left-width: 8px;
-  box-shadow: -4px 4px 15px rgba(0,0,0,0.4);
+  box-shadow: -4px 4px 15px rgba(0, 0, 0, 0.4);
   z-index: 10;
+}
+
+.segment-item:active {
+  transform: translateX(4px) scale(0.98);
+  background: rgba(var(--primary-rgb), 0.1);
 }
 
 .segment-speaker {

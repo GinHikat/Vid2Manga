@@ -7,8 +7,8 @@ import os
 
 @pytest.fixture
 def mock_dependencies():
-    with patch("modules.video_processor.split_video_audio") as mock_split, \
-         patch("modules.video_processor.speech2text") as mock_speech:
+    with patch("modules.frame.video_processor.split_video_audio") as mock_split, \
+         patch("modules.frame.video_processor.speech2text") as mock_speech:
         yield mock_split, mock_speech
 
 @pytest.mark.asyncio
@@ -33,7 +33,7 @@ async def test_process_video_task_success(mock_dependencies):
     assert "audio_url" in result
     
     # Verify mocks called
-    mock_split.assert_called_once_with("test.mp4")
+    mock_split.assert_called_once_with("input/test.mp4")
     mock_speech.assert_called_once()
 
 @pytest.mark.asyncio

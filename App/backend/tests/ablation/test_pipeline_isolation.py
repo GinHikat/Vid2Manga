@@ -3,15 +3,7 @@ import pytest
 from unittest.mock import MagicMock, patch
 import sys
 
-import whisper
-from modules.speech.process_audio import split_video_audio, speech2text, model
-
-# The model is the mock because of sys.modules mocking
-# Since model = whisper.load_model(...), model is the result of that call
-# We need to configure the 'transcribe' method on this model mock
-# However, `model` variable in process_audio.py holds the RETURN VALUE of `load_model`
-# whisper.load_model is the mock function
-# So model is the result of that mock function call.
+from modules.speech.process_audio import split_video_audio, speech2text
 
 def test_split_video_audio(mock_ffmpeg):
     input_file = "test_video.mp4"
@@ -34,24 +26,35 @@ def test_split_video_audio(mock_ffmpeg):
     assert '/' in video_path
 
     # Verify calls
-    # split_video_audio calls ffmpeg.input twice
     assert mock_ffmpeg.call_count == 2
     
-def test_speech2text():
+@patch("modules.speech.process_audio._get_whisper_model")
+@patch("modules.speech.diarization.diarizer.diarize")
+def test_speech2text(mock_diarize, mock_get_model):
+    # Setup diarize to return empty list (simulating no diarization)
+    mock_diarize.return_value = []
+    
     # Setup model.transcribe return value
-    # model is the mock object from Speech.process_audio
-    # The 'transcribe' method on it should return a result dict
+    mock_model = MagicMock()
+    mock_get_model.return_value = mock_model
     
-    expected_result = {"text": "This is a test transcription"}
-    model.transcribe.return_value = expected_result
+    expected_transcription = {
+        "text": "This is a test transcription",
+        "segments": [{"text": "This is a test transcription", "start": 0.0, "end": 1.0}]
+    }
+    mock_model.transcribe.return_value = expected_transcription
     
-    result = speech2text("test_audio.wav", language="en")
+    # We need to bypass GCP to test Whisper part
+    with patch.dict(os.environ, {"USE_WHISPER_ONLY": "true"}):
+        result = speech2text("test_audio.wav", language="en")
     
-    assert result == expected_result
-    # Verify transcribe was called with correct args
-    # The first arg is absolute path constructed inside
-    assert model.transcribe.called
-    call_args = model.transcribe.call_args
+    assert result["text"] == expected_transcription["text"]
+    assert len(result["segments"]) == 1
+    assert result["segments"][0]["speaker"] == "Unknown Speaker"
+    
+    # Verify transcribe was called
+    assert mock_model.transcribe.called
+    call_args = mock_model.transcribe.call_args
     assert call_args.kwargs['language'] == 'en'
     assert call_args.kwargs['word_timestamps'] is True
 

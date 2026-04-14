@@ -1,9 +1,23 @@
-import React from "react";
+import React, { useRef } from "react";
 import { Download, Film, Music, FileText } from "lucide-react";
 import "../css/ResultDisplay.css";
 import "../css/TextResult.css";
 
 const ResultDisplay = ({ videoUrl, audioUrl, text, segments }) => {
+  const videoRef = useRef(null);
+  const audioRef = useRef(null);
+
+  const handleJump = (startTime) => {
+    if (videoRef.current) {
+      videoRef.current.currentTime = startTime;
+      videoRef.current.play().catch(() => {}); // Play might fail if not interacted with
+    }
+    if (audioRef.current) {
+      audioRef.current.currentTime = startTime;
+      audioRef.current.play().catch(() => {});
+    }
+  };
+
   return (
     <div className="result-display-container">
       <h2>Conversion Results</h2>
@@ -14,7 +28,7 @@ const ResultDisplay = ({ videoUrl, audioUrl, text, segments }) => {
             <h3>Soundless Video</h3>
           </div>
           <div className="media-wrapper">
-            <video controls src={videoUrl} className="result-video" />
+            <video ref={videoRef} controls src={videoUrl} className="result-video" />
           </div>
           <a href={videoUrl} download className="download-btn">
             <Download size={16} /> Download Video
@@ -27,7 +41,7 @@ const ResultDisplay = ({ videoUrl, audioUrl, text, segments }) => {
             <h3>Extracted Audio</h3>
           </div>
           <div className="media-wrapper audio-wrapper">
-            <audio controls src={audioUrl} className="result-audio" />
+            <audio ref={audioRef} controls src={audioUrl} className="result-audio" />
             <div className="audio-visualizer-mock">
               <span></span>
               <span></span>
@@ -53,7 +67,12 @@ const ResultDisplay = ({ videoUrl, audioUrl, text, segments }) => {
             {segments && segments.length > 0 ? (
               <div className="segments-list">
                 {segments.map((segment, idx) => (
-                  <div key={idx} className="segment-item" title={`${segment.start.toFixed(1)}s - ${segment.end.toFixed(1)}s`}>
+                  <div 
+                    key={idx} 
+                    className="segment-item clickable" 
+                    title={`Click to play from ${segment.start.toFixed(1)}s`}
+                    onClick={() => handleJump(segment.start)}
+                  >
                     <div className="segment-speaker">{segment.speaker}</div>
                     <div className="segment-text">{segment.text}</div>
                     <div className="segment-time">{segment.start.toFixed(1)}s</div>
