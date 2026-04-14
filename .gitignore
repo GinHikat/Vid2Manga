@@ -1,5 +1,5 @@
 .env
-
+.vscode/
 input/
 output/
 App/backend/input/
@@ -22,3 +22,5 @@ notebook/*
 *.pdf
 images/
 data/
+
+GEMINI.md
