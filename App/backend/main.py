@@ -24,7 +24,13 @@ app.add_middleware(
 )
 
 app.mount("/output", StaticFiles(directory=settings.OUTPUT_DIR), name="output")
+@app.get("/health")
+async def health_check():
+    """Simple health check endpoint for deployment monitoring."""
+    return {"status": "healthy", "service": settings.PROJECT_NAME}
+
 app.include_router(api_router, prefix="/api")
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
