@@ -12,8 +12,8 @@ def test_typesetting():
     bubble_proc = Bubble()
     
     # Path to sample bubble images
-    body_path = os.path.join("modules", "frame", "bubble_frame", "elip_cleaned.jpg")
-    full_path = os.path.join("modules", "frame", "bubble_frame", "elip_cleaned.jpg")
+    body_path = os.path.join("modules", "frame", 'images', "bubble_frame", "elip_cleaned.jpg")
+    full_path = os.path.join("modules", "frame", 'images', "bubble_frame", "elip_cleaned.jpg")
     
     abs_body_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", body_path))
     abs_full_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", full_path))

@@ -301,6 +301,36 @@ class Bubble:
         body_polygon = self.extract_biggest_polygon(body_mask)
         return body_polygon, tail_mask, body_mask
 
+    # --- Alignment ---
+
+    def calculate_relative_angle(self, from_mask, to_mask):
+        """Calculates the angle from the centroid of one mask to another.
+        
+        Args:
+            from_mask (np.ndarray): The source mask (e.g., bubble body).
+            to_mask (np.ndarray): The target mask (e.g., character).
+            
+        Returns:
+            float or None: Angle in degrees, pointing from from_mask to to_mask.
+        """
+        def get_center(m):
+            if m is None or m.size == 0 or np.sum(m) == 0: return None
+            moments = cv2.moments(m)
+            if moments["m00"] == 0: return None
+            return int(moments["m10"] / moments["m00"]), int(moments["m01"] / moments["m00"])
+
+        c_from = get_center(from_mask)
+        c_to = get_center(to_mask)
+        
+        if c_from is None or c_to is None:
+            return None
+            
+        dx = c_to[0] - c_from[0]
+        dy = c_to[1] - c_from[1]
+        
+        angle_rad = np.arctan2(dy, dx)
+        return np.rad2deg(angle_rad)
+
     # --- Bubble Reattachment ---
 
     def reattach_tail(self, body_mask, tail_mask, angle_deg):
