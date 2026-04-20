@@ -289,7 +289,7 @@ const MangaGenerator = () => {
             )}
           </aside>
 
-          <section className="result-card" style={{ gap: "2rem" }}>
+          <section className="manga-result-card" style={{ gap: "2rem" }}>
             {resultUrls && resultUrls.length > 0 ? (
               resultUrls.map((url, idx) => (
                 <div
