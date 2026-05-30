@@ -65,6 +65,7 @@ To provide a seamless, end-to-end tool that converts various video formats (incl
 
 - `GEMINI.md`: (This file) Project overview and developer guide.
 - `README.md`: High-level summary and usage instructions.
+- `main.py`: Root-level deployment entry point mapping uvicorn ASGI requests to the App service layer.
 - `.env`: Environment variables (API keys, model toggles).
 
 
@@ -208,6 +209,9 @@ graph TD
 ---
 
 ## Development Log
+
+- **Render Port Binding Support: 2026-05-30**
+  - Created a root-level main.py ASGI router to bridge uvicorn calls from Render to the backend App directory structure.
 
 - **Premium Visual Redesign: 2026-05-30**
   - Refactored global App CSS with unified Ink and Crimson screentone variables, responsive workbench grids, and tactile button animations.
