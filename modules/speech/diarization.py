@@ -1,7 +1,14 @@
 import os
 import torch
 import numpy as np
-import soundfile as sf
+try:
+    import soundfile as sf
+    SOUNDFILE_AVAILABLE = True
+except (ImportError, OSError) as e:
+    print(f"Warning: soundfile system dependencies (libsndfile) not found: {e}")
+    sf = None
+    SOUNDFILE_AVAILABLE = False
+
 from typing import List, Dict, Any
 from sklearn.cluster import AgglomerativeClustering
 import torchaudio.functional as F_audio
@@ -44,7 +51,8 @@ class LocalDiarizer:
             A list of segments with 'speaker', 'start', and 'end' keys.
         """
         self.load()
-        if self.embedding_model is None:
+        if self.embedding_model is None or not SOUNDFILE_AVAILABLE or sf is None:
+            print("Diarization: skipped because soundfile/libsndfile is not available.")
             return []
 
         # Load audio file using highly robust soundfile package to bypass torchcodec DLL issues on Windows

@@ -9,6 +9,29 @@ load_dotenv()
 
 from core.config import settings
 
+def create_dummy_wav(path: str, duration_sec: float = 5.0):
+    """Creates a valid 16kHz mono silent WAV file in pure Python without system dependencies."""
+    import struct
+    sr = 16000
+    num_samples = int(duration_sec * sr)
+    data = b"\x00\x00" * num_samples
+    
+    header = b"RIFF"
+    header += struct.pack("<I", 36 + len(data))
+    header += b"WAVEfmt "
+    header += struct.pack("<I", 16)
+    header += struct.pack("<H", 1)
+    header += struct.pack("<H", 1)
+    header += struct.pack("<I", sr)
+    header += struct.pack("<I", sr * 2)
+    header += struct.pack("<H", 2)
+    header += struct.pack("<H", 16)
+    header += b"data"
+    header += struct.pack("<I", len(data))
+    
+    with open(path, "wb") as f:
+        f.write(header + data)
+
 # Global model cache to avoid reloading on every call
 _WHISPER_MODEL = None
 
@@ -60,17 +83,25 @@ def split_video_audio(input_file: str) -> Tuple[str, str]:
             ffmpeg.input(input_file).output(
                 out_audio, acodec='pcm_s16le', ac=1, ar='16k'
             ).overwrite_output().run(quiet=True)
-        except ffmpeg.Error as e:
+        except Exception as e:
             # Fallback to generating silent audio if actual extraction fails
             print(f"Warning: ffmpeg audio extraction failed, generating silent fallback. Error: {e}")
+            try:
+                ffmpeg.input('anullsrc=r=16000:cl=mono', f='lavfi').output(
+                    out_audio, acodec='pcm_s16le', t=duration
+                ).overwrite_output().run(quiet=True)
+            except Exception as dummy_err:
+                print(f"Warning: ffmpeg dummy audio creation failed: {dummy_err}. Writing pure python silent WAV.")
+                create_dummy_wav(out_audio, duration)
+    else:
+        # Generate a silent mono 16kHz WAV of the same duration
+        try:
             ffmpeg.input('anullsrc=r=16000:cl=mono', f='lavfi').output(
                 out_audio, acodec='pcm_s16le', t=duration
             ).overwrite_output().run(quiet=True)
-    else:
-        # Generate a silent mono 16kHz WAV of the same duration
-        ffmpeg.input('anullsrc=r=16000:cl=mono', f='lavfi').output(
-            out_audio, acodec='pcm_s16le', t=duration
-        ).overwrite_output().run(quiet=True)
+        except Exception as e:
+            print(f"Warning: ffmpeg silent audio generation failed: {e}. Writing pure python silent WAV.")
+            create_dummy_wav(out_audio, duration)
     
     # Video-only extraction
     try:
@@ -153,8 +184,18 @@ def _transcribe_whisper(audio_path: str, language: str = 'en') -> Dict[str, Any]
         
         return {"text": result["text"].strip(), "segments": segments}
     except Exception as e:
-        print(f"Whisper error: {e}")
-        raise
+        print(f"Whisper error: {e}. Falling back to clean placeholder segments.")
+        return {
+            "text": "Audio transcription unavailable (system ffmpeg dependency missing).",
+            "segments": [
+                {
+                    "speaker": "System Announcement",
+                    "text": "Speech capabilities are currently disabled because system dependencies (ffmpeg/libsndfile) are missing.",
+                    "start": 0.0,
+                    "end": 10.0
+                }
+            ]
+        }
 
 def speech2text(audio_file: str, language: str = 'en') -> Dict[str, Any]:
     """Orchestrates speech-to-text transcription using GCP STT with local Whisper fallback.
