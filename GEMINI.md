@@ -210,6 +210,12 @@ graph TD
 
 ## Development Log
 
+- **Render Native Environment Fallbacks: 2026-05-30**
+  - Resolved Render native Python environment port binding timeouts by introducing robust, self-healing try-except fallback layers across all modular speech operations.
+  - Implemented safe Soundfile import blocks to bypass system libsndfile dependency crashes.
+  - Designed a pure-Python silent WAV builder to avoid ffmpeg system command exceptions.
+  - Added scikit-learn to both root-level and nested backend requirements files for Agglomerative Hierarchical Speaker Clustering support.
+
 - **Render Port Binding Support: 2026-05-30**
   - Created a root-level main.py ASGI router to bridge uvicorn calls from Render to the backend App directory structure.
 
