@@ -1,7 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { Video, Star, Zap, PenTool, Columns } from "lucide-react";
-import heroImage from "../manga_hero_preview.png";
 import "../css/Home.css";
 
 function Home() {
@@ -49,7 +48,7 @@ function Home() {
             <div className="hero-visual-panel">
               <div className="visual-frame">
                 <img 
-                  src={heroImage} 
+                  src="/samples/manga_hero_preview.png" 
                   alt="Manga Layout Rendering Preview" 
                   className="hero-display-image"
                 />
