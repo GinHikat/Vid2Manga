@@ -25,3 +25,9 @@ data/
 
 GEMINI.md
 node_modules/
+
+data/*
+
+# Force include frontend public samples for fast testing
+!App/frontend/public/samples/
+!App/frontend/public/samples/*

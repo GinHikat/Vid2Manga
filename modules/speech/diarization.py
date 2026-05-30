@@ -4,6 +4,7 @@ import numpy as np
 import soundfile as sf
 from typing import List, Dict, Any
 from sklearn.cluster import AgglomerativeClustering
+import torchaudio.functional as F_audio
 
 from .ecapa_tdnn import PretrainedECAPATDNN
 
@@ -56,7 +57,6 @@ class LocalDiarizer:
                 waveform = torch.from_numpy(data).float().transpose(0, 1)
                 
             if sr != 16000:
-                import torchaudio.functional as F_audio
                 waveform = F_audio.resample(waveform, sr, 16000)
                 sr = 16000
         except Exception as e:

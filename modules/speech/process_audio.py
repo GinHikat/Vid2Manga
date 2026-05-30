@@ -38,13 +38,50 @@ def split_video_audio(input_file: str) -> Tuple[str, str]:
     out_audio = os.path.join(audio_output_dir, f"{name}.wav")
     out_video = os.path.join(video_output_dir, f"{name}.mp4")
 
+    # Probe the video to check for audio streams and find its duration
+    has_audio = True
+    duration = 30.0
+    try:
+        probe = ffmpeg.probe(input_file)
+        has_audio = any(s.get('codec_type') == 'audio' for s in probe.get('streams', []))
+        duration_str = probe.get('format', {}).get('duration')
+        if duration_str is not None:
+            duration = float(duration_str)
+        else:
+            video_streams = [s for s in probe.get('streams', []) if s.get('codec_type') == 'video']
+            if video_streams and video_streams[0].get('duration') is not None:
+                duration = float(video_streams[0]['duration'])
+    except Exception as e:
+        print(f"Warning: ffprobe failed for {input_file}: {e}")
+
     # Audio extraction: PCM 16LE, 16kHz, Mono
-    ffmpeg.input(input_file).output(
-        out_audio, acodec='pcm_s16le', ac=1, ar='16k'
-    ).overwrite_output().run(quiet=True)
+    if has_audio:
+        try:
+            ffmpeg.input(input_file).output(
+                out_audio, acodec='pcm_s16le', ac=1, ar='16k'
+            ).overwrite_output().run(quiet=True)
+        except ffmpeg.Error as e:
+            # Fallback to generating silent audio if actual extraction fails
+            print(f"Warning: ffmpeg audio extraction failed, generating silent fallback. Error: {e}")
+            ffmpeg.input('anullsrc=r=16000:cl=mono', f='lavfi').output(
+                out_audio, acodec='pcm_s16le', t=duration
+            ).overwrite_output().run(quiet=True)
+    else:
+        # Generate a silent mono 16kHz WAV of the same duration
+        ffmpeg.input('anullsrc=r=16000:cl=mono', f='lavfi').output(
+            out_audio, acodec='pcm_s16le', t=duration
+        ).overwrite_output().run(quiet=True)
     
     # Video-only extraction
-    ffmpeg.input(input_file).output(out_video, an=None).overwrite_output().run(quiet=True)
+    try:
+        ffmpeg.input(input_file).output(out_video, an=None).overwrite_output().run(quiet=True)
+    except ffmpeg.Error as e:
+        print(f"Warning: ffmpeg video-only extraction failed, copying source as fallback. Error: {e}")
+        import shutil
+        try:
+            shutil.copy2(input_file, out_video)
+        except Exception as copy_err:
+            print(f"Error: Failed to copy source video fallback: {copy_err}")
 
     return out_audio.replace('\\', '/'), out_video.replace('\\', '/')
 

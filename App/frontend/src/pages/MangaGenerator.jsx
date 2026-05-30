@@ -1,7 +1,6 @@
 import React, { useState, useRef } from "react";
 import axios from "axios";
 import { API_BASE_URL } from "../config";
-
 import { Link } from "react-router-dom";
 import {
   Upload,
@@ -10,7 +9,6 @@ import {
   Home as HomeIcon,
   Sparkles,
   User,
-  Eye,
   Download,
   Loader2,
   Columns,
@@ -46,6 +44,49 @@ const MangaGenerator = () => {
     // Create previews
     const newPreviews = selectedFiles.map((file) => URL.createObjectURL(file));
     setPreviews(newPreviews);
+  };
+
+  const handleLoadSampleImages = async () => {
+    const sampleImagesList = [
+      "342375242_245331094648423_7404527358037104979_n.png",
+      "365711745_686517320175796_1531261400117098977_n.jpg",
+      "368623532_24004931352438669_6751496886235696436_n.png",
+      "7064856a94ff75f226c851aa854a471a_1229983858974666441.jpg",
+      "F0q65O8aQAEZlDs.jfif",
+      "F0q65PDaIAEZe5t.jfif",
+      "F0q65PyaEAkKx7p.jfif",
+      "b277ba4933fe126f13415cf423a665aa_8995668507856338057.jpg"
+    ];
+
+    try {
+      setLoading(true);
+      setError(null);
+      const loadedFiles = [];
+      const loadedPreviews = [];
+      
+      for (const name of sampleImagesList) {
+        const response = await fetch(`/samples/${name}`);
+        if (!response.ok) throw new Error(`Sample image ${name} not found`);
+        const blob = await response.blob();
+        
+        let type = "image/png";
+        if (name.endsWith(".jpg") || name.endsWith(".jfif")) {
+          type = "image/jpeg";
+        }
+        
+        const file = new File([blob], name, { type });
+        loadedFiles.push(file);
+        loadedPreviews.push(URL.createObjectURL(file));
+      }
+      
+      setFiles(loadedFiles);
+      setPreviews(loadedPreviews);
+    } catch (err) {
+      console.error(err);
+      setError("Failed to load sample images.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleGenerate = async () => {
@@ -95,21 +136,18 @@ const MangaGenerator = () => {
   return (
     <div className="manga-generator-page app-container">
       <header className="app-header">
+        <div className="logo">
+          <Columns className="logo-icon" size={24} />
+          <h1>Vid2Manga</h1>
+        </div>
         <div className="nav-container">
           <Link to="/" className="home-nav-btn">
-            <HomeIcon size={20} /> Home
+            <HomeIcon size={16} /> Home
           </Link>
           <Link to="/convert" className="home-nav-btn">
-            <Video size={20} /> Video Converter
+            <Video size={16} /> Video Converter
           </Link>
         </div>
-        <div className="logo">
-          <Columns className="logo-icon" size={32} />
-          <h1>Manga Frame Generator</h1>
-        </div>
-        <p className="subtitle">
-          Transform your images into professional manga layouts
-        </p>
       </header>
 
       <main className="app-main manga-generator-container">
@@ -117,7 +155,8 @@ const MangaGenerator = () => {
           <aside className="controls-card">
             <div className="control-group">
               <label>
-                <Settings size={14} /> Page Dimensions (px)
+                <Settings size={12} style={{ marginRight: "0.25rem", color: "var(--accent-color)" }} /> 
+                Page Dimensions (px)
               </label>
               <div
                 style={{
@@ -216,15 +255,13 @@ const MangaGenerator = () => {
               </select>
             </div>
 
-            <div className="control-group checkboxes-flex">
+            <div className="control-group">
               <div
                 className="checkbox-group"
                 onClick={() => setSegmentHuman(!segmentHuman)}
               >
                 <input type="checkbox" checked={segmentHuman} readOnly />
-                <label>
-                  <User size={14} /> Segment Human
-                </label>
+                <span>Segment Character Masks</span>
               </div>
             </div>
 
@@ -233,13 +270,13 @@ const MangaGenerator = () => {
               onClick={() => fileInputRef.current.click()}
             >
               <Upload
-                size={32}
-                style={{ marginBottom: "0.5rem", color: "#6366f1" }}
+                size={28}
+                style={{ marginBottom: "0.5rem", color: "var(--accent-color)" }}
               />
               <p>
                 {files.length > 0
                   ? `${files.length} images selected`
-                  : "Click to Upload Images"}
+                  : "Click to Ingress Images"}
               </p>
               <input
                 type="file"
@@ -250,6 +287,15 @@ const MangaGenerator = () => {
                 accept="image/*"
               />
             </div>
+
+            <button
+              className="cta-button secondary"
+              onClick={handleLoadSampleImages}
+              disabled={loading}
+              style={{ width: "100%", marginBottom: "1rem" }}
+            >
+              Use 8 Sample Images
+            </button>
 
             {previews.length > 0 && (
               <div className="image-preview-grid">
@@ -267,11 +313,11 @@ const MangaGenerator = () => {
               disabled={loading || files.length === 0}
             >
               {loading ? (
-                <Loader2 className="animate-spin" size={20} />
+                <Loader2 className="animate-spin" size={18} />
               ) : (
-                <Sparkles size={20} />
+                <Sparkles size={18} />
               )}
-              {loading ? "Generating Layout..." : "Generate Manga Page"}
+              {loading ? "Generating layout..." : "Generate Manga Page"}
             </button>
 
             {error && (
@@ -281,6 +327,7 @@ const MangaGenerator = () => {
                   color: "#ef4444",
                   marginTop: "1rem",
                   fontSize: "0.9rem",
+                  fontFamily: "var(--font-mono)",
                   textAlign: "center",
                 }}
               >
@@ -289,15 +336,14 @@ const MangaGenerator = () => {
             )}
           </aside>
 
-          <section className="manga-result-card" style={{ gap: "2rem" }}>
+          <section className="manga-result-card">
             {resultUrls && resultUrls.length > 0 ? (
               resultUrls.map((url, idx) => (
                 <div
                   key={idx}
                   className="result-display-area"
                   style={{
-                    width: "auto",
-                    maxWidth: "100%",
+                    width: "100%",
                     display: "flex",
                     flexDirection: "column",
                     alignItems: "center",
@@ -308,14 +354,7 @@ const MangaGenerator = () => {
                     alt={`Manga Result Page ${idx + 1}`}
                     className="manga-result-image"
                   />
-                  <div
-                    className="result-actions"
-                    style={{
-                      marginTop: "1.5rem",
-                      display: "flex",
-                      gap: "1rem",
-                    }}
-                  >
+                  <div className="manga-result-actions">
                     <a
                       href={url}
                       download={`manga_page_${idx + 1}.png`}
@@ -323,27 +362,31 @@ const MangaGenerator = () => {
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      <Download size={20} /> Download Page {idx + 1}
+                      <Download size={18} /> Download Page {idx + 1}
                     </a>
                   </div>
                 </div>
               ))
             ) : (
-              <div className="placeholder-state">
+              <div className="workbench-placeholder" style={{ padding: 0 }}>
                 {loading ? (
                   <div className="loading-state">
                     <div className="loading-spinner"></div>
-                    <p style={{ marginTop: "1rem" }}>
-                      Creating your manga layout...
-                    </p>
+                    <div className="placeholder-text-group" style={{ marginTop: "1.5rem" }}>
+                      <h3>Synthesizing Manga Layout...</h3>
+                      <p className="mono-subtext">PIPELINE TASK: RECURSIVE SPLITTING TREE</p>
+                    </div>
                   </div>
                 ) : (
                   <>
                     <ImageIcon
-                      size={64}
-                      style={{ opacity: 0.1, marginBottom: "1rem" }}
+                      size={48}
+                      style={{ opacity: 0.15, color: "var(--accent-color)", marginBottom: "1rem" }}
                     />
-                    <p>Your generated manga page will appear here</p>
+                    <div className="placeholder-text-group">
+                      <h3>Canvas Viewport Empty</h3>
+                      <p>Import one or more frames and click generate to initiate layout aspect-ratio mapping and background rendering.</p>
+                    </div>
                   </>
                 )}
               </div>
@@ -353,7 +396,7 @@ const MangaGenerator = () => {
       </main>
 
       <footer className="app-footer">
-        <p>&copy; {new Date().getFullYear()} Vid2Manga Project</p>
+        <p>&copy; {new Date().getFullYear()} Vid2Manga Project. Precision visual-to-page production.</p>
       </footer>
     </div>
   );

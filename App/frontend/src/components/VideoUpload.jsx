@@ -127,6 +127,19 @@ const VideoUpload = ({
     inputRef.current.click();
   };
 
+  const handleLoadSample = async () => {
+    try {
+      const response = await fetch("/samples/vid1.mp4");
+      if (!response.ok) throw new Error("Sample file not found");
+      const blob = await response.blob();
+      const file = new File([blob], "vid1.mp4", { type: "video/mp4" });
+      handleFiles(file);
+    } catch (err) {
+      console.error(err);
+      onError("Failed to load sample video file.");
+    }
+  };
+
   return (
     <div className="video-upload-container">
       <div
@@ -208,10 +221,21 @@ const VideoUpload = ({
                   </div>
                   <h3>Drag & Drop your video here</h3>
                   <p>or</p>
-                  <button className="upload-btn" onClick={onButtonClick}>
-                    Browse Files
-                  </button>
-                  <p className="hint">Supports MP4, MOV, AVI</p>
+                  <div className="action-buttons" style={{ flexDirection: "column", gap: "0.5rem", maxWidth: "260px" }}>
+                    <button className="upload-btn primary-btn" onClick={onButtonClick}>
+                      Browse Files
+                    </button>
+                    <button 
+                      className="upload-btn secondary-btn" 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleLoadSample();
+                      }}
+                    >
+                      Use Sample Video
+                    </button>
+                  </div>
+                  <p className="hint" style={{ marginTop: "0.5rem" }}>Supports MP4, MOV, AVI</p>
                 </>
               )}
             </>
