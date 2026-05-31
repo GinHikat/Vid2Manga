@@ -1,7 +1,3 @@
-# ==========================================
-# Pure PyTorch ECAPA-TDNN Implementation
-# ==========================================
-
 import os
 import urllib.request
 import torch
@@ -28,10 +24,6 @@ def length_to_mask(length, max_len=None, dtype=torch.float, device=None):
     arange = torch.arange(max_len, device=device or length.device).unsqueeze(0).expand(batch_size, -1)
     mask = arange < length.unsqueeze(1)
     return mask.to(dtype)
-
-# ==========================================
-# Base Layer Components
-# ==========================================
 
 class TDNNBlock(nn.Module):
     """Time-Delay Neural Network block using standard PyTorch.
@@ -142,10 +134,6 @@ class SEBlock(nn.Module):
         s = self.relu(self.conv1(s))
         s = self.sigmoid(self.conv2(s))
         return s * x
-
-# ==========================================
-# Pooling & Meta-Block Components
-# ==========================================
 
 class AttentiveStatisticsPooling(nn.Module):
     """Attentive statistics pooling layer for channel-wise mean and standard deviation.
@@ -269,10 +257,6 @@ class SERes2NetBlock(nn.Module):
         x = self.se_block(x, lengths)
         return x + residual
 
-# ==========================================
-# Master ECAPA-TDNN Architecture
-# ==========================================
-
 class ECAPA_TDNN(nn.Module):
     """Pre-trained compatible implementation of ECAPA-TDNN using pure PyTorch.
 
@@ -380,10 +364,6 @@ class ECAPA_TDNN(nn.Module):
         x = self.asp_bn(x)
         x = self.fc(x)
         return x.transpose(1, 2)
-
-# ==========================================
-# Standalone Pre-trained Model Wrapper
-# ==========================================
 
 class PretrainedECAPATDNN(nn.Module):
     """Wrapper that manages pre-trained VoxCeleb model downloads and feature extraction.
