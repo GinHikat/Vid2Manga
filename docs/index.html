@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vid2Manga - Automated Video-to-Manga Storytelling Pipeline</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <!-- Screentone Background Overlay -->
+  <div class="screentone-overlay"></div>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="nav-container">
+      <a href="#" class="logo">
+        <span class="logo-icon">📖</span>
+        <span class="logo-text">Vid<span class="accent-cyan">2</span>Manga</span>
+      </a>
+      <div class="nav-links">
+        <a href="#overview">Overview</a>
+        <a href="#gallery">Manga Gallery</a>
+        <a href="#pipeline">Pipeline</a>
+        <a href="#benchmarks">Benchmarks</a>
+        <a href="https://github.com/GinHikat/Vid2Manga" target="_blank" class="nav-btn github-btn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+          GitHub
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <header id="overview" class="hero-section">
+    <div class="hero-content">
+      <div class="badge-row">
+        <span class="badge badge-cyan">v2.0 Performance Engine</span>
+        <span class="badge badge-crimson">15x Faster</span>
+        <span class="badge badge-green">Zero-Shot Diarization</span>
+      </div>
+      <h1 class="hero-title">Automated Video-to-Manga <span class="gradient-text">Storytelling Pipeline</span></h1>
+      <p class="hero-subtitle">
+        Transforming raw video content into professionally styled multi-page manga volumes. Powered by 
+        <strong>Mask2Former</strong> neural segmentation, <strong>ECAPA-TDNN</strong> zero-shot speaker diarization, 
+        and <strong>collision-free open-space typesetting</strong>.
+      </p>
+      <div class="hero-cta">
+        <a href="assets/final_manga_volume.pdf" target="_blank" class="btn btn-primary">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download PDF Volume
+        </a>
+        <a href="#pipeline" class="btn btn-secondary">Explore Pipeline Architecture</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Manga Gallery Showcase -->
+  <section id="gallery" class="section gallery-section">
+    <div class="section-container">
+      <div class="section-header">
+        <h2 class="section-title">Interactive Manga Volume Gallery</h2>
+        <p class="section-subtitle">Select a generated page below or click any panel to inspect high-resolution rendering.</p>
+      </div>
+
+      <!-- Gallery Controls -->
+      <div class="tab-controls">
+        <button class="tab-btn active" data-page="1">Page 1 (0s - 91s)</button>
+        <button class="tab-btn" data-page="2">Page 2 (91s - 183s)</button>
+        <button class="tab-btn" data-page="3">Page 3 (183s - 275s)</button>
+      </div>
+
+      <!-- Gallery Display Card -->
+      <div class="gallery-viewport">
+        <div class="gallery-display">
+          <img id="manga-page-img" src="assets/manga_page_1.png" alt="Generated Manga Page Output" />
+          <div class="image-overlay">
+            <button id="zoom-btn" class="zoom-btn">🔍 Click to Expand High-Res</button>
+          </div>
+        </div>
+        <div class="gallery-info">
+          <h3 id="page-title">Manga Page 1 (Timeline: 0.0s – 91.9s)</h3>
+          <p id="page-desc">
+            7-panel layout generated using Recursive Binary Splitting Tree. Dialogue transcribed via OpenAI Whisper base model and speaker-attributed via ECAPA-TDNN AHC clustering.
+          </p>
+          <div class="info-metrics">
+            <div class="metric-card">
+              <span class="metric-value">7</span>
+              <span class="metric-label">Panels</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-value">0%</span>
+              <span class="metric-label">Bubble Overlap</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-value">2</span>
+              <span class="metric-label">Diarized Speakers</span>
+            </div>
+          </div>
+          <a href="assets/final_manga_volume.pdf" target="_blank" class="btn btn-outline">
+            📄 Open Full PDF Volume (3 Pages)
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pipeline Architecture Explorer -->
+  <section id="pipeline" class="section pipeline-section">
+    <div class="section-container">
+      <div class="section-header">
+        <h2 class="section-title">5-Step Master Pipeline Architecture</h2>
+        <p class="section-subtitle">Click through the modular stages to understand the technical transformation flow.</p>
+      </div>
+
+      <div class="pipeline-grid">
+        <div class="pipeline-card active" data-step="1">
+          <div class="card-step">STEP 01</div>
+          <h3>Video Partitioning & Keyframes</h3>
+          <p>Extracts 7 distinct keyframe images across duration timelines with smart sampling.</p>
+        </div>
+        <div class="pipeline-card" data-step="2">
+          <div class="card-step">STEP 02</div>
+          <h3>Mask2Former Segmentation</h3>
+          <p>In-memory neural instance segmentation detecting character masks in 720p HD.</p>
+        </div>
+        <div class="pipeline-card" data-step="3">
+          <div class="card-step">STEP 03</div>
+          <h3>ECAPA-TDNN Diarization</h3>
+          <p>Extracts 192-dim voice embeddings and clusters speaker identities via AHC.</p>
+        </div>
+        <div class="pipeline-card" data-step="4">
+          <div class="card-step">STEP 04</div>
+          <h3>Collision-Free Typesetting</h3>
+          <p>Distance-transform open-space positioning and 2D bounding box push-away.</p>
+        </div>
+        <div class="pipeline-card" data-step="5">
+          <div class="card-step">STEP 05</div>
+          <h3>A4 Manga PDF Compositing</h3>
+          <p>Recursive Binary Splitting layout compositing and Pillow multi-page PDF save.</p>
+        </div>
+      </div>
+
+      <!-- Step Detail View -->
+      <div id="step-detail-box" class="step-detail-box">
+        <div class="detail-header">
+          <span id="detail-tag" class="badge badge-cyan">STAGE 1</span>
+          <h3 id="detail-title">Video Partitioning & Smart Keyframe Selection</h3>
+        </div>
+        <p id="detail-body">
+          Splits the source video file into duration-based sections. Samples candidate frames every 6.5 seconds in RAM, bypassing temporary file disk writes for maximum processing speed.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Performance Benchmarks Section -->
+  <section id="benchmarks" class="section benchmark-section">
+    <div class="section-container">
+      <div class="section-header">
+        <h2 class="section-title">15x Performance Benchmark</h2>
+        <p class="section-subtitle">Comparison of baseline inference passes vs Vid2Manga's optimized in-memory pipeline.</p>
+      </div>
+
+      <div class="benchmark-cards">
+        <div class="b-card">
+          <div class="b-number">15x</div>
+          <div class="b-title">Faster Total Runtime</div>
+          <div class="b-desc">Execution time dropped from 300s (5 min) down to ~20 seconds per 3-page volume.</div>
+        </div>
+        <div class="b-card">
+          <div class="b-number">42</div>
+          <div class="b-title">Transformer Passes</div>
+          <div class="b-desc">Smart candidate scanning reduced neural network inference from 469 passes down to 42.</div>
+        </div>
+        <div class="b-card">
+          <div class="b-number">0%</div>
+          <div class="b-title">Bubble Collision</div>
+          <div class="b-desc">Distance transform mapping and 2D rectangle push-away eliminate speech bubble overlap.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Lightbox Modal -->
+  <div id="lightbox" class="lightbox">
+    <span id="lightbox-close" class="lightbox-close">&times;</span>
+    <img id="lightbox-img" class="lightbox-content" src="" alt="Expanded Manga Page" />
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-container">
+      <p>© 2026 <strong>Vid2Manga Project</strong>. Built with PyTorch, Mask2Former, ECAPA-TDNN & OpenCV.</p>
+      <a href="https://github.com/GinHikat/Vid2Manga" target="_blank" class="footer-link">View on GitHub Repository</a>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

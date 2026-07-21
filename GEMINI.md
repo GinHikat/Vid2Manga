@@ -64,11 +64,10 @@ To provide a seamless, end-to-end tool that converts various video formats (incl
 ### 1. Root Configuration
 
 - `GEMINI.md`: (This file) Project overview and developer guide.
+- `state.md`: Pipeline status breakdown and active development roadmap.
 - `README.md`: High-level summary and usage instructions.
 - `main.py`: Root-level deployment entry point mapping uvicorn ASGI requests to the App service layer.
 - `.env`: Environment variables (API keys, model toggles).
-
-
 - `.gitignore`: Workspace-aware patterns for inputs, outputs, and local models.
 
 ### 2. Core Modules (`/modules`)
@@ -77,39 +76,30 @@ This directory contains the heavy-lifting logic, decoupled from the API layer.
 
 #### `/modules/frame` (Visual Processing)
 
-- **`video_processor.py`**:
-  - `process_video(file: UploadFile)`: Main entry point for synchronous video processing. Saves the upload, triggers audio/video splitting, and runs a transcription preview.
-  - `process_video_task(task_id: str, ...)`: Background task handler that orchestrates audio extraction, video-only stripping, and full transcription with segmentation. Updates task status and stores final results.
-  - *Imports*: `modules.speech.process_audio`, `core.config`, `task_manager`.
-- **`manga_processor.py`**:
-  - `draw_masks(image_np: np.ndarray, masks: list, ...)`: Helper to composite binary segmentation masks onto an image for visualization.
-  - `process_manga_generation(image_paths: list, ...)`: The master pipeline for converting a list of raw images into a multi-page manga. Orchestrates stylization, optional human segmentation, layout generation, and final page compositing.
-  - *Imports*: `stylizer`, `layout_generator`, `human_detector`, `core.config`.
-- **`stylizer.py`**:
-  - `frame_clear(image_path: str, ...)`: Validates image quality by checking for excessive blur or low brightness.
-  - `stylize_a`, `stylize_b`, `stylize_c`: Implementation of three distinct artistic filters:
-    - **A**: Classic Black & White Manga (**Contrast Limited Adaptive Histogram Equalization (CLAHE)** + **Adaptive Thresholding**).
-    - **B**: Anime-style Coloring (**Iterative Bilateral Filter** + **Median Blur Edges**).
-    - **C**: Comic book effect (**Edge-Preserving Smoothing** via `cv2.edgePreservingFilter`).
-  - `cv2_to_pil(cv2_image: np.ndarray)`: Utility to convert OpenCV images to PIL format for compositing.
-  - `create_manga_pipeline(...)`: A standalone test pipeline for image processing.
-- **`human_detector.py`**:
-  - `PersonSegmenter`: Class wrapper responsible for loading and running the **Mask2Former** universal segmentation model (`qubvel-hf/finetune-instance-segmentation-ade20k-mini-mask2former`).
-  - `load()`: Lazy-loads the Hugging Face transformer model and processor to the optimized device (CUDA/CPU).
-  - `segment(image_path: str, ...)`: Performs inference to extract binary masks of person instances from a given frame.
-- **`layout_generator.py`**:
-  - `generate_manga_layout(width, height, num_frames, ...)`: Implements a **Recursive Binary Splitting Tree** algorithm to generate ordered rectangular frames for a manga page. Prioritizes splitting areas with extreme aspect ratios.
-  - `create_manga_page(images, frames, ...)`: Composites processed images into the generated layout using Pillow **LANCZOS Resampling**.
-  - `create_bubble_mask(image_shape, axes, ...)`: Heuristic-based algorithm to find optimal placement for speech bubbles. Uses **Template Matching** (`cv2.matchTemplate`) with **Cross-Correlation** and a **Euclidean Distance Penalty** to avoid character overlap.
-- **`bubble_processor.py`**:
-  - `Bubble`: Utility class for advanced bubble manipulation.
-  - `get_bubble_mask(image, ...)`: Extracts a binary mask of a speech bubble from a frame.
-  - `segment_bubble(mask)`: Uses **Distance Transform** and **Morphological Opening/Dilation** to split a bubble mask into its "body" and "tail".
-  - `extract_biggest_polygon(mask)`: Simplifies custom bubble shapes into polygonal approximations using the **Approximate Polygonal DP (Douglas-Peucker) Algorithm**.
-  - `decompose_bubble(image)`: Full suite utility to break down a bubble into its geometric components.
-  - `reattach_tail(body_mask, tail_mask, angle_deg)`: Rotates and re-attaches a bubble tail at a custom angle using **Affine Transformations** (Translation/Rotation) and **Image Centroids**.
-  - `typeset_text(image, text, ...)`: Automatically fits and centers dialogue inside a bubble mask using **Mask Erosion** for padding and **Iterative Font Scaling**.
-  - `calculate_relative_angle(from_mask, to_mask)`: Calculates the geometric angle between mask centroids for automated tail alignment.
+#### `/modules/frame` (Visual & Manga Processing Architecture)
+
+The visual processing layer is organized into 4 primary function category modules and 1 master prototype pipeline:
+
+- **`video_processor.py` (Video Ingestion & Partitioning Category)**:
+  - `extract_keyframes(video_path: str, interval_sec: float = 5.0, ...)`: Extracts frame images at fixed intervals.
+  - `split_vid(video_path: str, partition_length: float = 20.0, ...)`: Splits video into duration-based segment files.
+  - `process_video(file: UploadFile)`: Main entry point for synchronous video uploads.
+  - `process_video_task(task_id: str, ...)`: Asynchronous background worker for audio extraction and segmentation.
+- **`manga_processor.py` (Layout, Stylization & Page Compositing Category)**:
+  - `stylize_a`, `stylize_b`, `stylize_c`: Implementation of classic B&W manga, anime color, and edge-preserving comic artistic filters.
+  - `frame_clear(image_path: str, ...)`: Quality validation for image sharpness and brightness.
+  - `generate_manga_layout(width, height, num_frames, ...)`: Recursive Binary Splitting Tree algorithm for panel layout generation.
+  - `create_manga_page(images, frames, ...)`: Composites processed images into panels using Pillow LANCZOS resampling.
+  - `save_manga_pages_to_pdf(page_images, output_pdf_path)`: Combines PIL page images or file paths into a multi-page PDF volume.
+  - `process_manga_generation(...)`: High-level master endpoint for image-list to manga PNG URL conversion.
+- **`bubble_processor.py` (Speech Bubble Typesetting & Alignment Category)**:
+  - `Bubble`: Class wrapper for bubble mask extraction, morphology tail segmentation, polygon approximation, and text typesetting.
+  - `find_optimal_bubble_center(total_person_mask, bubble_w, bubble_h, ...)`: Distance-transform open space calculation prioritizing maximum clearance from character masks.
+- **`human_detector.py` (Neural Instance Segmentation Category)**:
+  - `PersonSegmenter`: Wrapper for loading and running **Mask2Former** (`qubvel-hf/finetune-instance-segmentation-ade20k-mini-mask2former`) supporting in-memory array segmentation.
+- **`end_to_end_vid2manga.py` (Master Prototype Pipeline & Orchestrator)**:
+  - `generate_video_manga_page(video, num_frames=7, time_range=None, ...)`: Converts a video file/path section into a stylized manga page.
+  - `generate_full_video_manga_volume(video, num_pages=3, num_frames_per_page=7, output_pdf_name=..., page_width=1000, page_height=1400)`: Master prototype function converting a video into a multi-page manga PDF volume.
 
 #### `/modules/speech` (Audio Processing)
 
@@ -209,6 +199,20 @@ graph TD
 ---
 
 ## Development Log
+
+- **Centralized Data Path Routing: 2026-07-21**
+  - Updated `Settings` in `App/backend/core/config.py` to route `settings.INPUT_DIR` to `data/input` and `settings.OUTPUT_DIR` to `data/output` under project root `data/`.
+  - Prevented writing backend inputs and outputs inside `App/backend/`.
+
+- **State & Architecture Alignment Assessment: 2026-07-21**
+  - Evaluated current repository status against master pipeline architecture (`vid2manga_pipeline.png`).
+  - Created `state.md` documenting implemented components, functional gaps, and a 4-phase action plan for full video-to-manga automation.
+
+- **GMM-UBM & D-Vector Implementation: 2026-06-01**
+  - Implemented the classical GMM-UBM model (Expectation-Maximization training and MAP mean adaptation) from scratch in NumPy for deep learning baseline studies.
+  - Implemented the original Google D-Vector framework (dense deep neural network, context stacking, and temporal average pooling) in PyTorch.
+  - Developed a standalone evaluation pipeline (`diarization_evolution.py`) to execute, visualize, and trial both frameworks.
+  - Created a robust companion markdown study guide (`diarization_evolution.md`) describing speaker verification evolution from frame-level DNNs to x-vectors and ECAPA-TDNNs.
 
 - **Render Native Environment Fallbacks: 2026-05-30**
   - Resolved Render native Python environment port binding timeouts by introducing robust, self-healing try-except fallback layers across all modular speech operations.

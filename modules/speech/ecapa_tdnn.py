@@ -399,6 +399,7 @@ class PretrainedECAPATDNN(nn.Module):
         
         self._load_weights()
         self.model.to(self.device)
+        self.mel_transform.to(self.device)
         self.model.eval()
 
     def _load_weights(self):

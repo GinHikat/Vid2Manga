@@ -385,3 +385,84 @@ class Bubble:
             sm = np.float32([[1, 0, shift * vx], [0, 1, shift * vy]])
             rotated_tail = cv2.warpAffine(rotated_tail, sm, (w, h), flags=cv2.INTER_NEAREST)
         return cv2.bitwise_or(body_mask, rotated_tail)
+
+def find_optimal_bubble_center(
+    total_person_mask: np.ndarray,
+    bubble_w: int,
+    bubble_h: int,
+    preferred_side: str = "left",
+    y_min: int = 80,
+    y_max: int = 400
+):
+    """Calculates bubble center coordinates (cx, cy) in open background space, prioritizing max distance from person masks.
+
+    Args:
+        total_person_mask (np.ndarray): Combined binary mask of all detected person instances.
+        bubble_w (int): Target width of speech bubble ellipse.
+        bubble_h (int): Target height of speech bubble ellipse.
+        preferred_side (str): Preferred horizontal region ('left' or 'right').
+        y_min (int): Minimum vertical boundary.
+        y_max (int): Maximum vertical boundary.
+
+    Returns:
+        Tuple[int, int]: Optimal (cx, cy) coordinates inside safe frame margins.
+    """
+    h, w = total_person_mask.shape[:2]
+
+    # Dilate person masks by 25px safety zone
+    kernel = np.ones((25, 25), np.uint8)
+    dilated_person = cv2.dilate((total_person_mask > 0).astype(np.uint8), kernel)
+
+    # Invert to get clear background space
+    clear_space = (dilated_person == 0).astype(np.uint8) * 255
+    dist_map = cv2.distanceTransform(clear_space, cv2.DIST_L2, 5)
+
+    margin_x = bubble_w // 2 + 40
+    margin_y = bubble_h // 2 + 35
+
+    y_start_idx = max(margin_y, y_min)
+    y_end_idx = min(h - margin_y, y_max)
+    if y_end_idx <= y_start_idx:
+        y_end_idx = max(y_start_idx + 10, h - margin_y)
+
+    # Search preferred side first
+    valid_region = np.zeros_like(dist_map, dtype=np.uint8)
+    if preferred_side == "left":
+        x_start = margin_x
+        x_end = max(margin_x + 1, w // 2 + 30)
+    else:
+        x_start = max(margin_x, w // 2 - 30)
+        x_end = max(x_start + 1, w - margin_x)
+
+    if x_end > x_start and y_end_idx > y_start_idx:
+        valid_region[y_start_idx:y_end_idx, x_start:x_end] = 1
+
+    # Exponential distance penalty to maximize clearance from person pixels
+    masked_dist = np.square(dist_map, dtype=np.float32) * valid_region
+    _, max_val, _, max_loc = cv2.minMaxLoc(masked_dist)
+
+    if max_val > 100:
+        res_x, res_y = max_loc[0], max_loc[1]
+    else:
+        # Fallback: Search full upper canvas inside safe margins
+        valid_global = np.zeros_like(dist_map, dtype=np.uint8)
+        x_g_start = margin_x
+        x_g_end = max(margin_x + 1, w - margin_x)
+        if y_end_idx > y_start_idx and x_g_end > x_g_start:
+            valid_global[y_start_idx:y_end_idx, x_g_start:x_g_end] = 1
+
+        masked_global = np.square(dist_map, dtype=np.float32) * valid_global
+        _, max_val_g, _, max_loc_g = cv2.minMaxLoc(masked_global)
+
+        if max_val_g > 50:
+            res_x, res_y = max_loc_g[0], max_loc_g[1]
+        else:
+            # Emergency corner placement: Top-left or Top-right background corner
+            res_x = margin_x if preferred_side == "left" else w - margin_x
+            res_y = y_start_idx
+
+    # Final margin clamping
+    final_cx = max(margin_x, min(w - margin_x, res_x))
+    final_cy = max(margin_y, min(h - margin_y, res_y))
+
+    return final_cx, final_cy

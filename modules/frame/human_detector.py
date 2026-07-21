@@ -1,4 +1,5 @@
 import os
+import cv2
 import torch
 import numpy as np
 from PIL import Image
@@ -31,11 +32,11 @@ class PersonSegmenter:
             self.model.eval()
         return self
 
-    def segment(self, image_path: str, min_area: int = 700, min_score: float = 0.7) -> Tuple[np.ndarray, np.ndarray, List[np.ndarray], Dict[str, Any]]:
-        """Segments person instances in an image.
+    def segment(self, image_input: Any, min_area: int = 700, min_score: float = 0.7) -> Tuple[np.ndarray, np.ndarray, List[np.ndarray], Dict[str, Any]]:
+        """Segments person instances in an image path, PIL Image, or NumPy array.
 
         Args:
-            image_path: Absolute path to the input image.
+            image_input: Absolute file path (str), PIL.Image object, or NumPy array.
             min_area: Minimum pixel area for a mask to be kept.
             min_score: Minimum confidence score for a mask to be kept.
 
@@ -49,7 +50,20 @@ class PersonSegmenter:
         if self.model is None:
             self.load()
             
-        image = Image.open(image_path).convert("RGB")
+        if isinstance(image_input, str):
+            image = Image.open(image_input).convert("RGB")
+        elif isinstance(image_input, Image.Image):
+            image = image_input.convert("RGB")
+        elif isinstance(image_input, np.ndarray):
+            if image_input.shape[2] == 3:
+                # Convert BGR to RGB if OpenCV array
+                image_rgb = cv2.cvtColor(image_input, cv2.COLOR_BGR2RGB)
+                image = Image.fromarray(image_rgb)
+            else:
+                image = Image.fromarray(image_input).convert("RGB")
+        else:
+            raise ValueError(f"Unsupported image input type: {type(image_input)}")
+
         image_np = np.array(image)
 
         # Prepare inputs for the model

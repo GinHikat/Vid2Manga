@@ -1,11 +1,8 @@
 .env
 .vscode/
-input/
-output/
 App/backend/input/
 App/backend/output/
 modules/speech/models/
-modules/crawling/chromedriver.exe
 models/
 secrets/
 .pytest_cache
@@ -21,9 +18,9 @@ notebook/*
 *.jfif
 *.pdf
 images/
-data/
 
 GEMINI.md
+state.md
 node_modules/
 
 data/*

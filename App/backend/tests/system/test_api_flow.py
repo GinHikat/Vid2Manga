@@ -19,7 +19,7 @@ def test_convert_video_endpoint(client):
         files = {"file": (file_name, file_content, "video/mp4")}
         
         # Send POST request
-        response = client.post("/convert", files=files, data={"language": "en"})
+        response = client.post("/api/convert", files=files, data={"language": "en"})
         
         assert response.status_code == 200
         data = response.json()
@@ -34,7 +34,7 @@ def test_convert_video_endpoint(client):
         # TestClient runs background tasks synchronously after the request.
         
         # Verify status endpoint
-        status_response = client.get(f"/status/{task_id}")
+        status_response = client.get(f"/api/status/{task_id}")
         assert status_response.status_code == 200
         status_data = status_response.json()
         
