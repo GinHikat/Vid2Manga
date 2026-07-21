@@ -47,25 +47,12 @@ Vid2Manga bridges video content and manga storytelling. Translating video narrat
 
 | Page 1 (0s - 91s) | Page 2 (91s - 183s) | Page 3 (183s - 275s) |
 | :---: | :---: | :---: |
-| <img src="docs/assets/manga_page_1.png" width="260"/> | <img src="docs/assets/manga_page_2.png" width="260"/> | <img src="docs/assets/manga_page_3.png" width="260"/> |
-| [*View High-Res*](docs/assets/manga_page_1.png) | [*View High-Res*](docs/assets/manga_page_2.png) | [*View High-Res*](docs/assets/manga_page_3.png) |
+| <img src="https://raw.githubusercontent.com/GinHikat/Vid2Manga/main/docs/assets/manga_page_1.png" width="260"/> | <img src="https://raw.githubusercontent.com/GinHikat/Vid2Manga/main/docs/assets/manga_page_2.png" width="260"/> | <img src="https://raw.githubusercontent.com/GinHikat/Vid2Manga/main/docs/assets/manga_page_3.png" width="260"/> |
+| [*View High-Res*](https://raw.githubusercontent.com/GinHikat/Vid2Manga/main/docs/assets/manga_page_1.png) | [*View High-Res*](https://raw.githubusercontent.com/GinHikat/Vid2Manga/main/docs/assets/manga_page_2.png) | [*View High-Res*](https://raw.githubusercontent.com/GinHikat/Vid2Manga/main/docs/assets/manga_page_3.png) |
 
 </div>
 
-> 📄 **Download Sample PDF Volume**: [`data/output/final_manga_volume.pdf`](data/output/final_manga_volume.pdf)
-
----
-
-## 📊 Performance Benchmarks (15x Speedup)
-
-By replacing disk I/O file writing with in-memory NumPy/PIL array passing and reusing precomputed speech segments across page loops, Vid2Manga achieves an **11x-15x compute reduction**:
-
-| Pipeline Stage | Baseline Execution | **Vid2Manga (Optimized)** | Speedup |
-| --- | --- | --- | --- |
-| **Mask2Former Inference** | 469 passes (154/page) | **42 passes (14/page)** | **11.2x Faster** |
-| **Disk I/O Temp Files** | 469 file writes/deletes | **0 file writes (In-Memory)** | **Infinitely Faster** |
-| **Audio STT & Diarization** | 3 executions (per page) | **1 execution (Shared pass)** | **3.0x Faster** |
-| **Total Volume Runtime** | ~300 seconds (5 min) | **~20 seconds** | **15.0x Faster** |
+> 📄 **Download Sample PDF Volume**: [`docs/assets/final_manga_volume.pdf`](https://raw.githubusercontent.com/GinHikat/Vid2Manga/main/docs/assets/final_manga_volume.pdf)
 
 ---
 
@@ -174,17 +161,3 @@ python -m pytest App/backend/tests
 
 ---
 
-## 📜 Citation & Acknowledgements
-
-If you find Vid2Manga useful in your research or project, please consider citing or starring the repository:
-
-```bibtex
-@article{vid2manga2026,
-  title={Vid2Manga: Automated Video-to-Manga Storytelling Pipeline via Neural Segmentation and Zero-Shot Speaker Diarization},
-  author={Vid2Manga Development Team},
-  journal={GitHub Repository},
-  year={2026},
-  publisher={GitHub},
-  howpublished={\url{https://github.com/GinHikat/Vid2Manga}}
-}
-```
