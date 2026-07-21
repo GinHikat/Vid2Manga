@@ -153,11 +153,8 @@ npm run dev
 
 ## 🧪 Automated Testing
 
-Run the full pytest suite (Unit, Ablation, and System Integration tests):
+## Media Acknowledgements
 
-```bash
-python -m pytest App/backend/tests
-```
-
----
+### Sample Video Credit
+The sample video utilized in the demonstration showcase is titled **"57 Years Apart – A Boy And a Man Talk About Life"** (available on [YouTube](https://www.youtube.com/watch?v=BqSxjmvXzzY)). All rights to the original video content belong to its respective creators.
 
