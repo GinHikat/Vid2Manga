@@ -3,14 +3,21 @@ import cv2
 import uuid
 import random
 import numpy as np
-from PIL import Image, ImageOps, JpegImagePlugin, PdfImagePlugin
+from PIL import Image, ImageOps, ImageDraw, ImageFont, JpegImagePlugin, PdfImagePlugin
 Image.init()
 
 from core.config import settings
 from modules.frame.human_detector import PersonSegmenter
 
 # Lazy-loaded instance segmenter
-segmenter = PersonSegmenter()
+_segmenter = None
+
+def get_segmenter():
+    """Lazy-loads PersonSegmenter instance on first access."""
+    global _segmenter
+    if _segmenter is None:
+        _segmenter = PersonSegmenter()
+    return _segmenter
 
 # --- Image Utilities & Clear Checks ---
 
@@ -185,29 +192,47 @@ def generate_manga_layout(
     root = {"rect": (0, 0, width, height), "left": None, "right": None}
     leaves = [root]
     
+    min_w = 260
+    min_h = 240
+
     while len(leaves) < num_frames:
-        best_idx, max_score = 0, 0
+        candidates = []
         for i, node in enumerate(leaves):
             _, _, w, h = node["rect"]
-            score = (w * h) * (max(w / h, h / w) ** 1.5)
-            if score > max_score:
-                max_score, best_idx = score, i
-                
+            can_v = w >= 2 * min_w
+            can_h = h >= 2 * min_h
+            if can_v or can_h:
+                aspect = w / h
+                score = (w * h) * (max(aspect, 1.0 / max(aspect, 0.01)) ** 1.5)
+                candidates.append((score, i, can_v, can_h))
+
+        if not candidates:
+            break
+
+        candidates.sort(key=lambda c: c[0], reverse=True)
+        _, best_idx, can_v, can_h = candidates[0]
         node = leaves.pop(best_idx)
         x, y, w, h = node["rect"]
         aspect = w / h
-        
-        direction = 'vertical' if aspect >= 1.25 else 'horizontal' if aspect <= 0.8 else random.choice(['v', 'h'])
-        ratio = max(min_ratio, min(1.0 - min_ratio, random.normalvariate(0.5, std_dev)))
-        
-        if direction in ['vertical', 'v']:
-            w1 = int(w * ratio)
+
+        if can_v and can_h:
+            direction = 'v' if aspect >= 1.2 else 'h' if aspect <= 0.8 else random.choice(['v', 'h'])
+        elif can_v:
+            direction = 'v'
+        else:
+            direction = 'h'
+
+        ratio = max(0.35, min(0.65, random.normalvariate(0.5, std_dev)))
+
+        if direction == 'v':
+            w1 = max(min_w, min(w - min_w, int(w * ratio)))
             node["left"] = {"rect": (x, y, w1, h), "left": None, "right": None}
             node["right"] = {"rect": (x + w1, y, w - w1, h), "left": None, "right": None}
         else:
-            h1 = int(h * ratio)
+            h1 = max(min_h, min(h - min_h, int(h * ratio)))
             node["left"] = {"rect": (x, y, w, h1), "left": None, "right": None}
             node["right"] = {"rect": (x, y + h1, w, h - h1), "left": None, "right": None}
+
         leaves.extend([node["left"], node["right"]])
         
     def _get_rects(n):
@@ -232,12 +257,13 @@ def create_manga_page(images: list, frames: list, width: int = 1000, height: int
     Returns:
         Image.Image: Composited manga page PIL image.
     """
-    if len(images) != len(frames):
-        raise ValueError("Mismatch between images and frames count")
     page = Image.new("RGB", (width, height), bg_color)
+    draw_page = ImageDraw.Draw(page)
     for img_input, (x, y, w, h) in zip(images, frames):
         img = Image.open(img_input) if isinstance(img_input, str) else img_input.copy()
-        page.paste(ImageOps.fit(img.convert('RGB'), (int(w), int(h)), method=Image.Resampling.LANCZOS), (int(x), int(y)))
+        fitted = ImageOps.fit(img.convert('RGB'), (int(w), int(h)), method=Image.Resampling.LANCZOS)
+        page.paste(fitted, (int(x), int(y)))
+        draw_page.rectangle([int(x), int(y), int(x + w), int(y + h)], outline="black", width=2)
     return page
 
 def create_bubble_mask(image_shape: tuple, axes: tuple, character_mask: np.ndarray = None, proximity_target: tuple = None, num_persons: int = 1) -> tuple:
@@ -321,7 +347,7 @@ async def process_manga_generation(
 
         if segment_human:
             try:
-                _, _, masks, _ = segmenter.segment(path)
+                _, _, masks, _ = get_segmenter().segment(path)
                 if show_mask and masks:
                     proc_cv2 = draw_masks(proc_cv2, masks)
             except Exception as e:
@@ -396,4 +422,360 @@ def save_manga_pages_to_pdf(
 
     print(f"Successfully created multi-page manga PDF with {len(pil_pages)} pages at: {output_pdf_path}")
     return os.path.abspath(output_pdf_path)
+
+def _create_bubble_canvas_with_tail(bw: int, bh: int, tail_angle_deg: float = 120.0, tail_len: int = 25) -> np.ndarray:
+    """Creates a white speech bubble canvas with a black outline border and a directional tail pointing toward the speaker.
+
+    Args:
+        bw (int): Main bubble body width.
+        bh (int): Main bubble body height.
+        tail_angle_deg (float): Angle in degrees pointing from bubble center toward speaker.
+        tail_len (int): Length of tail extension in pixels.
+
+    Returns:
+        np.ndarray: OpenCV BGR image array containing the bubble body and tail.
+    """
+    margin = tail_len + 5
+    canvas_w = bw + margin * 2
+    canvas_h = bh + margin * 2
+    img = np.full((canvas_h, canvas_w, 3), 255, dtype=np.uint8)
+
+    cx, cy = canvas_w // 2, canvas_h // 2
+    rx, ry = bw // 2 - 4, bh // 2 - 4
+
+    angle_rad = np.deg2rad(tail_angle_deg)
+    vx, vy = np.cos(angle_rad), np.sin(angle_rad)
+
+    spread_rad = np.deg2rad(22.0)
+    p1_x = int(cx + rx * np.cos(angle_rad - spread_rad))
+    p1_y = int(cy + ry * np.sin(angle_rad - spread_rad))
+    p2_x = int(cx + rx * np.cos(angle_rad + spread_rad))
+    p2_y = int(cy + ry * np.sin(angle_rad + spread_rad))
+
+    tip_x = int(cx + (rx + tail_len) * vx)
+    tip_y = int(cy + (ry + tail_len) * vy)
+
+    tail_poly = np.array([[p1_x, p1_y], [tip_x, tip_y], [p2_x, p2_y]], dtype=np.int32)
+
+    # Fill white interior
+    cv2.ellipse(img, (cx, cy), (rx, ry), 0, 0, 360, (255, 255, 255), -1)
+    cv2.fillPoly(img, [tail_poly], (255, 255, 255))
+
+    # Black stroke outline
+    cv2.ellipse(img, (cx, cy), (rx, ry), 0, 0, 360, (0, 0, 0), 3)
+    cv2.line(img, (p1_x, p1_y), (tip_x, tip_y), (0, 0, 0), 3)
+    cv2.line(img, (p2_x, p2_y), (tip_x, tip_y), (0, 0, 0), 3)
+
+    # Erase inner ellipse arc between tail base points
+    inner_poly = np.array([[p1_x, p1_y], [int(cx + (rx - 4) * vx), int(cy + (ry - 4) * vy)], [p2_x, p2_y]], dtype=np.int32)
+    cv2.fillPoly(img, [inner_poly], (255, 255, 255))
+
+    return img
+
+def create_manga_page_with_dialogue(
+    frame_dialogue_pairs: list[dict],
+    stylize_style: str = 'c',
+    width: int = 1000,
+    height: int = 1400,
+    bg_color: str = "white",
+    enable_bubbles: bool = True,
+    seed: int = None,
+    global_speaker_map: dict = None
+) -> Image.Image:
+    """Composites stylized frames with character detection, speech bubbles, and dialogue alignment.
+
+    Args:
+        frame_dialogue_pairs (list[dict]): List of matched keyframe + speech segment dicts.
+        stylize_style (str): Artistic filter choice ('a': B&W, 'b': color anime, 'c': comic).
+        width (int): Canvas total width in pixels (default: 1000).
+        height (int): Canvas total height in pixels (default: 1400).
+        bg_color (str): Page background color (default: "white").
+        enable_bubbles (bool): Whether to typeset and overlay speech bubbles.
+        seed (int, optional): Optional random seed for panel layout splitting reproducibility.
+        global_speaker_map (dict, optional): Persistent context dictionary mapping speakers to person indices.
+
+    Returns:
+        Image.Image: Composited manga page PIL Image.
+    """
+    if not frame_dialogue_pairs:
+        raise ValueError("Cannot create manga page from empty frame dialogue pairs list.")
+
+    if global_speaker_map is None:
+        global_speaker_map = {}
+
+    num_panels = len(frame_dialogue_pairs)
+    frames = generate_manga_layout(width=width, height=height, num_frames=num_panels, seed=seed)
+    
+    page = Image.new("RGB", (width, height), bg_color)
+    draw_page = ImageDraw.Draw(page)
+    stylizer_map = {'a': stylize_a, 'b': stylize_b, 'c': stylize_c}
+    stylizer_func = stylizer_map.get(stylize_style, stylize_c)
+
+    from modules.frame.bubble_processor import Bubble, find_optimal_bubble_center
+
+    bubble_tool = Bubble()
+
+    for pair, (x, y, w, h) in zip(frame_dialogue_pairs, frames):
+        img_path = pair.get("keyframe_path") or pair.get("path")
+        if not img_path or not os.path.exists(img_path):
+            panel_pil = Image.new("RGB", (int(w), int(h)), "gray")
+        else:
+            proc_cv2 = stylizer_func(img_path)
+            if proc_cv2 is None:
+                orig = cv2.imread(img_path)
+                proc_cv2 = cv2.cvtColor(orig, cv2.COLOR_BGR2RGB) if orig is not None else np.zeros((int(h), int(w), 3), dtype=np.uint8)
+            panel_pil = Image.fromarray(proc_cv2)
+
+        # Fit panel image into layout frame bounding box
+        panel_fitted = ImageOps.fit(panel_pil.convert("RGB"), (int(w), int(h)), method=Image.Resampling.LANCZOS)
+        panel_bgr = cv2.cvtColor(np.array(panel_fitted), cv2.COLOR_RGB2BGR)
+
+        # Speech bubble typesetting and overlay
+        dialogue_text = (pair.get("dialogue") or "").strip()
+        raw_turns = pair.get("dialogue_by_speaker") or []
+        if not raw_turns and dialogue_text:
+            raw_turns = [{"speaker": pair.get("speaker", "Unknown Speaker"), "text": dialogue_text}]
+
+        # Merge turns from the SAME speaker into 1 single turn per speaker
+        merged_turns_map = {}
+        for t in raw_turns:
+            spk_key = t.get("speaker", "Unknown Speaker")
+            txt_val = (t.get("text") or "").strip()
+            if txt_val:
+                if spk_key not in merged_turns_map:
+                    merged_turns_map[spk_key] = []
+                merged_turns_map[spk_key].append(txt_val)
+
+        speaker_turns = [
+            {"speaker": spk_key, "text": " ".join(txt_list)}
+            for spk_key, txt_list in merged_turns_map.items()
+        ]
+
+        if enable_bubbles and speaker_turns:
+            try:
+                # Segment character instances inside panel
+                _, _, masks, _ = get_segmenter().segment(panel_bgr)
+                
+                person_centroids = []
+                total_person_mask = np.zeros(panel_bgr.shape[:2], dtype=np.uint8)
+
+                if masks:
+                    for m in masks:
+                        m_uint8 = m.astype(np.uint8)
+                        total_person_mask = cv2.bitwise_or(total_person_mask, m_uint8)
+                        moments = cv2.moments(m_uint8)
+                        if moments["m00"] > 0:
+                            mcx = int(moments["m10"] / moments["m00"])
+                            mcy = int(moments["m01"] / moments["m00"])
+                            person_centroids.append((mcx, mcy, m_uint8))
+
+                person_centroids.sort(key=lambda item: item[0])
+                face_head_mask = np.zeros(panel_bgr.shape[:2], dtype=np.uint8)
+
+                for mcx, mcy, m_uint8 in person_centroids:
+                    ys, xs = np.where(m_uint8 > 0)
+                    if len(ys) > 0:
+                        ymin, ymax = np.min(ys), np.max(ys)
+                        head_cutoff = int(ymin + 0.40 * (ymax - ymin))
+                        head_submask = np.zeros_like(m_uint8)
+                        head_submask[ymin:head_cutoff, :] = m_uint8[ymin:head_cutoff, :]
+                        face_head_mask = cv2.bitwise_or(face_head_mask, head_submask)
+
+                unique_speakers = list(dict.fromkeys([t["speaker"] for t in speaker_turns]))
+                speaker_to_person = {}
+
+                for s_idx, spk in enumerate(unique_speakers):
+                    if spk not in global_speaker_map and spk not in ["Unknown Speaker", "Unknown"]:
+                        if "0" in str(spk):
+                            global_speaker_map[spk] = 0
+                        elif "1" in str(spk):
+                            global_speaker_map[spk] = 1
+                        else:
+                            global_speaker_map[spk] = len(global_speaker_map)
+
+                    p_idx = global_speaker_map.get(spk, s_idx)
+                    if p_idx < len(person_centroids):
+                        speaker_to_person[spk] = person_centroids[p_idx]
+                    else:
+                        speaker_to_person[spk] = None
+
+                placed_bubbles_mask = np.zeros(panel_bgr.shape[:2], dtype=np.uint8)
+                person_coverage = np.sum(total_person_mask > 0) / (float(w * h) or 1.0)
+
+                # Process each unique speaker in panel
+                for turn in speaker_turns:
+                    spk = turn.get("speaker", "Unknown Speaker")
+                    txt = (turn.get("text") or "").strip()
+                    if not txt:
+                        continue
+
+                    # Dynamic font size reduction and word wrapping to fit ellipse bounds
+                    bubble_w = max(160, min(int(w * 0.70), len(txt) * 6 + 40))
+                    bubble_h = max(100, min(int(h * 0.40), len(txt) * 3 + 35))
+
+                    font_size = 15
+                    min_font_size = 8
+                    selected_font = None
+                    selected_lines = []
+                    selected_line_height = 18
+
+                    dummy_img = Image.new("RGB", (1, 1))
+                    d_dummy = ImageDraw.Draw(dummy_img)
+
+                    while font_size >= min_font_size:
+                        try:
+                            font = ImageFont.truetype("arial.ttf", font_size)
+                        except Exception:
+                            font = ImageFont.load_default()
+
+                        line_height = font_size + 4
+                        max_chars = max(10, int((bubble_w * 0.70) / max(3.0, font_size * 0.55)))
+
+                        words = txt.split()
+                        test_lines = []
+                        curr_line = []
+                        for word in words:
+                            curr_line.append(word)
+                            if len(" ".join(curr_line)) > max_chars:
+                                curr_line.pop()
+                                if curr_line:
+                                    test_lines.append(" ".join(curr_line))
+                                curr_line = [word]
+                        if curr_line:
+                            test_lines.append(" ".join(curr_line))
+
+                        tot_h = len(test_lines) * line_height
+                        max_w = max([d_dummy.textbbox((0, 0), l, font=font)[2] for l in test_lines]) if test_lines else 0
+
+                        if tot_h <= bubble_h * 0.70 and max_w <= bubble_w * 0.72:
+                            selected_font = font
+                            selected_lines = test_lines
+                            selected_line_height = line_height
+                            break
+
+                        font_size -= 1
+
+                    if selected_font is None:
+                        try:
+                            selected_font = ImageFont.truetype("arial.ttf", min_font_size)
+                        except Exception:
+                            selected_font = ImageFont.load_default()
+                        selected_line_height = min_font_size + 3
+                        words = txt.split()
+                        selected_lines = []
+                        curr_line = []
+                        for word in words:
+                            curr_line.append(word)
+                            if len(" ".join(curr_line)) > 15:
+                                curr_line.pop()
+                                if curr_line:
+                                    selected_lines.append(" ".join(curr_line))
+                                curr_line = [word]
+                        if curr_line:
+                            selected_lines.append(" ".join(curr_line))
+
+                    speaker_idx = global_speaker_map.get(spk, 0)
+                    preferred_side = "left" if speaker_idx == 0 else "right"
+
+                    box_half_w = bubble_w // 2
+                    box_half_h = bubble_h // 2
+                    margin_x = box_half_w + 10
+                    margin_y = box_half_h + 10
+
+                    # For close-up shots or top corners, force cy = margin_y
+                    opt_cx, opt_cy = find_optimal_bubble_center(
+                        total_person_mask=total_person_mask,
+                        bubble_w=bubble_w,
+                        bubble_h=bubble_h,
+                        preferred_side=preferred_side,
+                        y_max=margin_y if person_coverage > 0.35 else int(h * 0.40)
+                    )
+
+                    candidate_positions = [
+                        (margin_x if preferred_side == "left" else int(w) - margin_x, margin_y),
+                        (opt_cx, margin_y if person_coverage > 0.35 else opt_cy),
+                        (int(w) - margin_x if preferred_side == "left" else margin_x, margin_y),
+                        (margin_x if preferred_side == "left" else int(w) - margin_x, int(h) - margin_y)
+                    ]
+
+                    best_pos = None
+                    best_penalty = float('inf')
+
+                    for cand_cx, cand_cy in candidate_positions:
+                        c_cx = max(margin_x, min(int(w) - margin_x, cand_cx))
+                        c_cy = max(margin_y, min(int(h) - margin_y, cand_cy))
+
+                        test_body = np.zeros(panel_bgr.shape[:2], dtype=np.uint8)
+                        cv2.ellipse(test_body, (c_cx, c_cy), (box_half_w, box_half_h), 0, 0, 360, 255, -1)
+
+                        face_overlap = np.sum((test_body > 0) & (face_head_mask > 0))
+                        bubble_overlap = np.sum((test_body > 0) & (placed_bubbles_mask > 0))
+                        person_overlap = np.sum((test_body > 0) & (total_person_mask > 0))
+
+                        penalty = (bubble_overlap * 100000.0) + (face_overlap * 10000.0) + person_overlap
+
+                        if penalty < best_penalty:
+                            best_penalty = penalty
+                            best_pos = (c_cx, c_cy)
+
+                    cx, cy = best_pos if best_pos else (margin_x if preferred_side == "left" else int(w) - margin_x, margin_y)
+                    body_mask = np.zeros(panel_bgr.shape[:2], dtype=np.uint8)
+                    cv2.ellipse(body_mask, (cx, cy), (box_half_w, box_half_h), 0, 0, 360, 255, -1)
+
+                    # Register placed bubble to prevent subsequent bubble overlap
+                    cv2.ellipse(placed_bubbles_mask, (cx, cy), (box_half_w + 15, box_half_h + 15), 0, 0, 360, 255, -1)
+
+                    matched_person = speaker_to_person.get(spk)
+
+                    if matched_person is not None:
+                        # Visible speaker character: attach tail pointing to speaker centroid
+                        char_x, char_y = matched_person[0], matched_person[1]
+                        dx = char_x - cx
+                        dy = char_y - cy
+                        tail_angle_deg = np.rad2deg(np.arctan2(dy, dx))
+
+                        tail_mask = np.zeros(panel_bgr.shape[:2], dtype=np.uint8)
+                        base_pts = np.array([
+                            [cx - 12, cy + box_half_h - 2],
+                            [cx + 12, cy + box_half_h - 2],
+                            [cx + int(np.clip(dx * 0.3, -35, 35)), cy + box_half_h + 28]
+                        ], dtype=np.int32)
+                        cv2.fillPoly(tail_mask, [base_pts], 255)
+
+                        aligned_bubble_mask = bubble_tool.reattach_tail(body_mask, tail_mask, tail_angle_deg)
+                    else:
+                        # Off-screen speaker: hide tail, use clean bubble body ONLY
+                        aligned_bubble_mask = body_mask
+
+                    # Draw white bubble fill and black contour stroke onto panel_bgr
+                    bubble_contours, _ = cv2.findContours(aligned_bubble_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                    cv2.drawContours(panel_bgr, bubble_contours, -1, (255, 255, 255), -1)
+                    cv2.drawContours(panel_bgr, bubble_contours, -1, (0, 0, 0), 3)
+
+                    # Dilate placed bubble in total_person_mask so next speaker bubble avoids it
+                    bubble_kernel = np.ones((22, 22), np.uint8)
+                    dilated_bubble = cv2.dilate(aligned_bubble_mask, bubble_kernel)
+                    total_person_mask[dilated_bubble > 0] = 255
+
+                    # Typeset text strictly inside main ellipse body
+                    pil_panel = Image.fromarray(cv2.cvtColor(panel_bgr, cv2.COLOR_BGR2RGB))
+                    draw = ImageDraw.Draw(pil_panel)
+
+                    y_start = cy - (len(selected_lines) * selected_line_height) // 2
+                    for line in selected_lines:
+                        l_bbox = draw.textbbox((0, 0), line, font=selected_font)
+                        text_w = l_bbox[2] - l_bbox[0]
+                        draw.text((cx - text_w // 2, y_start), line, font=selected_font, fill=(0, 0, 0))
+                        y_start += selected_line_height
+
+                    panel_bgr = cv2.cvtColor(np.array(pil_panel), cv2.COLOR_RGB2BGR)
+            except Exception as err:
+                print(f"Warning: Bubble typesetting error for panel: {err}")
+
+        # Paste panel onto main A4 page
+        final_panel_pil = Image.fromarray(cv2.cvtColor(panel_bgr, cv2.COLOR_BGR2RGB))
+        page.paste(final_panel_pil, (int(x), int(y)))
+        draw_page.rectangle([int(x), int(y), int(x + w), int(y + h)], outline="black", width=2)
+
+    return page
 

@@ -24,7 +24,6 @@ class PersonSegmenter:
     def load(self):
         """Lazy-loads the Mask2Former model and processor into memory."""
         if self.model is None:
-            print(f"Loading model from {self.checkpoint}...")
             self.model = Mask2FormerForUniversalSegmentation.from_pretrained(
                 self.checkpoint
             ).to(self.device)
@@ -97,9 +96,5 @@ class PersonSegmenter:
                     
                     if area >= min_area:
                         person_masks.append(mask)
-                    else:
-                        print(f"Skipping instance {segment_info['id']} with area {area}")
-                elif segment_info["label_id"] == person_label_id:
-                    print(f"Skipping instance {segment_info['id']} with low score {segment_info['score']:.2f}")
 
         return image_np, instance_map, person_masks, outputs

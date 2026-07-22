@@ -438,7 +438,8 @@ def find_optimal_bubble_center(
         valid_region[y_start_idx:y_end_idx, x_start:x_end] = 1
 
     # Exponential distance penalty to maximize clearance from person pixels
-    masked_dist = np.square(dist_map, dtype=np.float32) * valid_region
+    dist_clamped = np.clip(dist_map, 0, 500).astype(np.float32)
+    masked_dist = (dist_clamped ** 2) * valid_region
     _, max_val, _, max_loc = cv2.minMaxLoc(masked_dist)
 
     if max_val > 100:
@@ -451,7 +452,7 @@ def find_optimal_bubble_center(
         if y_end_idx > y_start_idx and x_g_end > x_g_start:
             valid_global[y_start_idx:y_end_idx, x_g_start:x_g_end] = 1
 
-        masked_global = np.square(dist_map, dtype=np.float32) * valid_global
+        masked_global = (dist_clamped ** 2) * valid_global
         _, max_val_g, _, max_loc_g = cv2.minMaxLoc(masked_global)
 
         if max_val_g > 50:

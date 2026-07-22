@@ -81,7 +81,7 @@ This directory contains the heavy-lifting logic, decoupled from the API layer.
 The visual processing layer is organized into 4 primary function category modules and 1 master prototype pipeline:
 
 - **`video_processor.py` (Video Ingestion & Partitioning Category)**:
-  - `extract_keyframes(video_path: str, interval_sec: float = 5.0, ...)`: Extracts frame images at fixed intervals.
+  - `extract_keyframes(video_path: str, interval_sec: float = 5.0, max_scene_gap_sec: float = 7.0, ...)`: Scene-aware keyframe extraction with HSV histogram difference, 7s maximum gap constraint, Laplacian clarity filtering, and full-video chronological streaming.
   - `split_vid(video_path: str, partition_length: float = 20.0, ...)`: Splits video into duration-based segment files.
   - `process_video(file: UploadFile)`: Main entry point for synchronous video uploads.
   - `process_video_task(task_id: str, ...)`: Asynchronous background worker for audio extraction and segmentation.
@@ -90,6 +90,7 @@ The visual processing layer is organized into 4 primary function category module
   - `frame_clear(image_path: str, ...)`: Quality validation for image sharpness and brightness.
   - `generate_manga_layout(width, height, num_frames, ...)`: Recursive Binary Splitting Tree algorithm for panel layout generation.
   - `create_manga_page(images, frames, ...)`: Composites processed images into panels using Pillow LANCZOS resampling.
+  - `create_manga_page_with_dialogue(frame_dialogue_pairs, ...)`: Composites multi-panel manga pages with stylized frames, Mask2Former character detection, open-space bubble placement, and speech bubble typesetting.
   - `save_manga_pages_to_pdf(page_images, output_pdf_path)`: Combines PIL page images or file paths into a multi-page PDF volume.
   - `process_manga_generation(...)`: High-level master endpoint for image-list to manga PNG URL conversion.
 - **`bubble_processor.py` (Speech Bubble Typesetting & Alignment Category)**:
@@ -97,9 +98,13 @@ The visual processing layer is organized into 4 primary function category module
   - `find_optimal_bubble_center(total_person_mask, bubble_w, bubble_h, ...)`: Distance-transform open space calculation prioritizing maximum clearance from character masks.
 - **`human_detector.py` (Neural Instance Segmentation Category)**:
   - `PersonSegmenter`: Wrapper for loading and running **Mask2Former** (`qubvel-hf/finetune-instance-segmentation-ade20k-mini-mask2former`) supporting in-memory array segmentation.
+- **`timestamp_matcher.py` (Visual & Speech Temporal Alignment Category)**:
+  - `match_keyframes_with_dialogue(keyframes: list[dict], speech_segments: list, ...)`: Computes active panel temporal windows and aligns keyframes with timestamped STT speech segments to produce unified `FrameDialoguePair` objects.
+  - `find_best_keyframe_for_segment(segment: dict, keyframes: list[dict])`: Finds the single keyframe image closest in timestamp to a speech segment midpoint.
 - **`end_to_end_vid2manga.py` (Master Prototype Pipeline & Orchestrator)**:
   - `generate_video_manga_page(video, num_frames=7, time_range=None, ...)`: Converts a video file/path section into a stylized manga page.
   - `generate_full_video_manga_volume(video, num_pages=3, num_frames_per_page=7, output_pdf_name=..., page_width=1000, page_height=1400)`: Master prototype function converting a video into a multi-page manga PDF volume.
+  - `process_video_to_manga_volume(video_path: str, num_frames_per_page: int = 7, ...)`: Master end-to-end pipeline orchestrator converting a video into a multi-page manga PDF volume with speech bubbles and dialogue alignment.
 
 #### `/modules/speech` (Audio Processing)
 
@@ -199,6 +204,54 @@ graph TD
 ---
 
 ## Development Log
+
+- **Placed Bubbles Mask & Close-up Top Clearance: 2026-07-22**
+  - Integrated `placed_bubbles_mask` tracking in `create_manga_page_with_dialogue` ([`manga_processor.py`](file:///d:/Study/Education/Projects/Vid2Manga/modules/frame/manga_processor.py)) with a $100,000$ penalty multiplier to eliminate any overlapping between multiple speech bubbles in a panel.
+  - Implemented character coverage checking (`person_coverage > 0.35`): forces speech bubbles to top panel margins (`cy = margin_y`) on close-up character shots, ensuring bubbles never sit over character chests, necks, or faces.
+
+- **Face & Head Protection Mask & Multi-Candidate Placement: 2026-07-22**
+  - Extracted `face_head_mask` (top 38% of detected `Mask2Former` character bounding boxes) in `create_manga_page_with_dialogue` ([`manga_processor.py`](file:///d:/Study/Education/Projects/Vid2Manga/modules/frame/manga_processor.py)).
+  - Implemented multi-candidate position penalty scoring `(face_overlap * 1000 + person_overlap)`, prioritizing positions with 0 face overlap to guarantee speech bubbles **never cover character faces or heads**.
+
+- **Minimum Frame Dimensions & Dynamic Font Resizing: 2026-07-22**
+  - Enforced strict minimum width ($w \ge 260\text{px}$) and height ($h \ge 240\text{px}$) bounds in `generate_manga_layout` ([`manga_processor.py`](file:///d:/Study/Education/Projects/Vid2Manga/modules/frame/manga_processor.py)), preventing any narrow or tiny vertical panel splits.
+  - Implemented iterative font size scaling (15px down to 8px) and dynamic word wrapping inside speech bubbles, ensuring long text fits 100% inside the oval bubble ellipse without bleeding across black outline borders.
+
+- **Same-Speaker Turn Merging & Speaker Side Separation: 2026-07-22**
+  - Updated `create_manga_page_with_dialogue` in `modules/frame/manga_processor.py` to aggregate all speech turns from the SAME speaker in a panel into **1 single merged speech bubble**.
+  - Enforced strict spatial side separation (`preferred_side = "left"` for Speaker 0 / Person 0, `preferred_side = "right"` for Speaker 1 / Person 1) and corner fallbacks to prevent any overlapping between different speakers.
+
+- **Persistent Speaker-to-Person Mapping & Robust Audio Fallback: 2026-07-22**
+  - Added Python `wave` stdlib audio reading fallback in `modules/speech/diarization.py` so offline speaker diarization runs reliably across all Python environments even if `soundfile`/`libsndfile` is not installed.
+  - Implemented `global_speaker_map` persistent context mapping in `modules/frame/manga_processor.py` and `modules/frame/end_to_end_vid2manga.py`.
+  - Consistently maps Speaker 0 (`SPEAKER_00`) to Person 0 (left character) and Speaker 1 (`SPEAKER_01`) to Person 1 (right character) across the entire manga volume session.
+
+- **Speaker-Aware Multi-Bubble Layout & Off-Screen Tail Filtering: 2026-07-22**
+  - Upgraded `match_keyframes_with_dialogue` in `modules/frame/timestamp_matcher.py` to group turn-by-turn dialogue into structured `dialogue_by_speaker` lists, ensuring 100% of video transcript segments are rendered without repetition or omission.
+  - Refined `create_manga_page_with_dialogue` in `modules/frame/manga_processor.py` to render per-speaker speech bubbles inside each panel frame.
+  - Implemented speaker-to-character centroid mapping: attached directional speech bubble tails pointing to visible speaker characters, and hid bubble tails (rendering clean bubble bodies only) for off-screen speakers.
+  - Dilated placed speech bubbles in `total_person_mask` to prevent any overlaps between multiple speaker bubbles in the same panel.
+
+- **Master End-to-End Video-to-Manga Pipeline: 2026-07-22**
+  - Implemented `process_video_to_manga_volume` in `modules/frame/end_to_end_vid2manga.py`, integrating Audio Extraction, Speech STT/Diarization, Scene-Aware Keyframe Extraction (7s gap), Timestamp Alignment, Speech Bubble Compositing, and Multi-Page PDF Volume compilation.
+  - Updated `process_video_task` in `modules/frame/video_processor.py` to trigger the complete end-to-end workflow in background job tasks, returning `pdf_url`, `manga_urls`, `total_pages`, `total_keyframes`, `text`, and `segments`.
+  - Added unit test suite in `modules/test/test_end_to_end_pipeline.py` verifying full volume PDF creation and payload response.
+
+- **Speech Bubble Panel Compositor: 2026-07-22**
+  - Implemented `create_manga_page_with_dialogue` in `modules/frame/manga_processor.py`.
+  - Integrated panel stylization filters (`stylize_a`, `stylize_b`, `stylize_c`), lazy-loaded `PersonSegmenter` (Mask2Former) character detection, and `find_optimal_bubble_center` open-space bubble placement.
+  - Optimized module import performance by making `PersonSegmenter` lazy-loaded via `get_segmenter()`.
+  - Added mocked unit test suite in `modules/test/test_manga_compositor.py` running in $<0.5\text{s}$.
+
+- **Keyframe & Dialogue Timestamp Matcher: 2026-07-22**
+  - Created `modules/frame/timestamp_matcher.py` featuring `match_keyframes_with_dialogue` and `find_best_keyframe_for_segment`.
+  - Implemented dynamic panel time boundary calculation $[t_{\text{start}}, t_{\text{end}}]$, speech segment temporal overlap aggregation, and dominant speaker assignment.
+  - Added unit test suite in `modules/test/test_timestamp_matcher.py` verifying alignment, empty speech fallbacks, and segment midpoint matching.
+
+- **Enhanced Keyframe Extraction Engine: 2026-07-22**
+  - Upgraded `extract_keyframes` in `modules/frame/video_processor.py` to support HSV histogram scene change detection, Laplacian variance blur/brightness quality filtering (`_is_frame_clear`), and full-video chronological streaming.
+  - Enforced a 7-second maximum scene gap safety constraint (`max_scene_gap_sec = 7.0`) to prevent dialogue accumulation and speech bubble text overflow in downstream manga pages.
+  - Added unit test suite in `modules/test/test_keyframe_extraction.py` verifying synthetic video keyframe selection, trigger reasons, and gap thresholds.
 
 - **Centralized Data Path Routing: 2026-07-21**
   - Updated `Settings` in `App/backend/core/config.py` to route `settings.INPUT_DIR` to `data/input` and `settings.OUTPUT_DIR` to `data/output` under project root `data/`.

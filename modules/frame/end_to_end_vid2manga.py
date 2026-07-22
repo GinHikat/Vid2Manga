@@ -499,6 +499,109 @@ def generate_full_video_manga_volume(
     print("=" * 60)
     return final_pdf_path
 
+def process_video_to_manga_volume(
+    video_path: str,
+    num_frames_per_page: int = 7,
+    stylize_style: str = "c",
+    language: str = "en",
+    output_pdf_name: str = None,
+    page_width: int = 1000,
+    page_height: int = 1400,
+    seed: int = None
+) -> dict:
+    """Master pipeline orchestrator converting a video into a multi-page manga PDF volume.
+
+    Executes Audio Extraction -> STT/Diarization -> Scene-Aware Keyframe Extraction ->
+    Timestamp Alignment -> Multi-Page Speech Bubble Compositing -> PDF Volume Export.
+
+    Args:
+        video_path (str): Path to input video file (absolute or relative to settings.INPUT_DIR).
+        num_frames_per_page (int): Target panels per page (default: 7).
+        stylize_style (str): Artistic filter identifier ('a', 'b', or 'c').
+        language (str): STT transcription language code ('en', 'vi', etc.).
+        output_pdf_name (str, optional): Filename for output PDF. Defaults to '<video_name>_manga_volume.pdf'.
+        page_width (int): Page canvas width in pixels (default: 1000).
+        page_height (int): Page canvas height in pixels (default: 1400).
+        seed (int, optional): Random seed for layout generation (default: None).
+
+    Returns:
+        dict: Payload containing pdf_url, manga_urls, total_pages, total_keyframes, segments, text.
+    """
+    if not os.path.isabs(video_path):
+        potential_path = os.path.join(settings.INPUT_DIR, video_path)
+        if os.path.exists(potential_path):
+            video_path = potential_path
+
+    if not os.path.exists(video_path):
+        raise FileNotFoundError(f"Video file not found at: {video_path}")
+
+    base_name = os.path.splitext(os.path.basename(video_path))[0]
+    if output_pdf_name is None:
+        output_pdf_name = f"{base_name}_manga_volume.pdf"
+
+    # Step 1: Audio extraction & Speech STT/Diarization
+    audio_path, video_clean_path = split_video_audio(video_path)
+    speech_res = speech2text(os.path.basename(audio_path), language=language)
+    speech_segments = speech_res.get("segments", [])
+    full_transcript = speech_res.get("text", "")
+
+    # Step 2: Scene-aware keyframe extraction with 7s max scene gap constraint
+    from modules.frame.video_processor import extract_keyframes
+    keyframes = extract_keyframes(
+        video_path=video_path,
+        max_scene_gap_sec=7.0,
+        detect_scenes=True,
+        scene_threshold=0.35,
+        min_clarity=True
+    )
+
+    # Step 3: Keyframe & Dialogue Timestamp Alignment
+    from modules.frame.timestamp_matcher import match_keyframes_with_dialogue
+    frame_dialogue_pairs = match_keyframes_with_dialogue(keyframes, speech_segments)
+
+    # Step 4: Multi-Page Speech Bubble Compositing
+    from modules.frame.manga_processor import create_manga_page_with_dialogue, save_manga_pages_to_pdf
+
+    page_images = []
+    page_urls = []
+    global_speaker_map = {}
+
+    for i in range(0, len(frame_dialogue_pairs), num_frames_per_page):
+        chunk_pairs = frame_dialogue_pairs[i:i + num_frames_per_page]
+        layout_seed = (seed + i) if seed is not None else None
+        page_pil = create_manga_page_with_dialogue(
+            frame_dialogue_pairs=chunk_pairs,
+            stylize_style=stylize_style,
+            width=page_width,
+            height=page_height,
+            enable_bubbles=True,
+            seed=layout_seed,
+            global_speaker_map=global_speaker_map
+        )
+
+        page_filename = f"{base_name}_page_{len(page_images)+1:03d}.png"
+        page_save_path = os.path.join(settings.OUTPUT_DIR, page_filename)
+        page_pil.save(page_save_path)
+
+        page_images.append(page_save_path)
+        page_urls.append(f"/output/{page_filename}")
+
+    # Step 5: Save multi-page PDF volume
+    pdf_save_path = os.path.join(settings.OUTPUT_DIR, output_pdf_name)
+    save_manga_pages_to_pdf(page_images, pdf_save_path)
+
+    pdf_rel = os.path.relpath(pdf_save_path, settings.OUTPUT_DIR).replace("\\", "/")
+
+    return {
+        "pdf_path": os.path.abspath(pdf_save_path),
+        "pdf_url": f"/output/{pdf_rel}",
+        "manga_urls": page_urls,
+        "total_pages": len(page_urls),
+        "total_keyframes": len(keyframes),
+        "text": full_transcript,
+        "segments": speech_segments
+    }
+
 if __name__ == "__main__":
     sample_video = os.path.join(settings.BASE_DIR, "data", "video", "sample_vid.mp4")
     if os.path.exists(sample_video):

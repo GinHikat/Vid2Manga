@@ -9,11 +9,48 @@ except (ImportError, OSError) as e:
     sf = None
     SOUNDFILE_AVAILABLE = False
 
+import wave
 from typing import List, Dict, Any
 from sklearn.cluster import AgglomerativeClustering
 import torchaudio.functional as F_audio
 
 from .ecapa_tdnn import PretrainedECAPATDNN
+
+def _load_audio_waveform(audio_path: str) -> tuple[torch.Tensor, int]:
+    """Loads audio into a (1, N) float32 Tensor at 16kHz using soundfile or wave stdlib."""
+    if SOUNDFILE_AVAILABLE and sf is not None:
+        try:
+            data, sr = sf.read(audio_path)
+            if len(data.shape) == 1:
+                waveform = torch.from_numpy(data).float().unsqueeze(0)
+            else:
+                waveform = torch.from_numpy(data).float().transpose(0, 1)
+            return waveform, sr
+        except Exception:
+            pass
+
+    # Standard Python wave stdlib fallback (zero external C dependencies)
+    with wave.open(audio_path, 'rb') as wf:
+        sr = wf.getframerate()
+        n_channels = wf.getnchannels()
+        n_frames = wf.getnframes()
+        raw_bytes = wf.readframes(n_frames)
+        sample_width = wf.getsampwidth()
+
+        if sample_width == 2:
+            data_np = np.frombuffer(raw_bytes, dtype=np.int16).astype(np.float32) / 32768.0
+        elif sample_width == 4:
+            data_np = np.frombuffer(raw_bytes, dtype=np.int32).astype(np.float32) / 2147483648.0
+        else:
+            data_np = np.frombuffer(raw_bytes, dtype=np.int16).astype(np.float32) / 32768.0
+
+        if n_channels > 1:
+            data_np = data_np.reshape(-1, n_channels).T
+            waveform = torch.from_numpy(data_np).float()
+        else:
+            waveform = torch.from_numpy(data_np).float().unsqueeze(0)
+
+        return waveform, sr
 
 class LocalDiarizer:
     """Handles offline zero-shot speaker diarization using pre-trained ECAPA-TDNN and AHC.
@@ -51,19 +88,12 @@ class LocalDiarizer:
             A list of segments with 'speaker', 'start', and 'end' keys.
         """
         self.load()
-        if self.embedding_model is None or not SOUNDFILE_AVAILABLE or sf is None:
-            print("Diarization: skipped because soundfile/libsndfile is not available.")
+        if self.embedding_model is None:
+            print("Diarization: skipped because embedding model could not be loaded.")
             return []
 
-        # Load audio file using highly robust soundfile package to bypass torchcodec DLL issues on Windows
         try:
-            data, sr = sf.read(audio_path)
-            # soundfile returns array of shape (frames, channels) or (frames,)
-            if len(data.shape) == 1:
-                waveform = torch.from_numpy(data).float().unsqueeze(0)
-            else:
-                waveform = torch.from_numpy(data).float().transpose(0, 1)
-                
+            waveform, sr = _load_audio_waveform(audio_path)
             if sr != 16000:
                 waveform = F_audio.resample(waveform, sr, 16000)
                 sr = 16000

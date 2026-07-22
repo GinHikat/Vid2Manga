@@ -1,23 +1,113 @@
 import os
-import shutil
-import subprocess
-import traceback
+os.environ["OPENCV_LOG_LEVEL"] = "OFF"
+os.environ["OPENCV_FFMPEG_LOGLEVEL"] = "-8"
 import cv2
+try:
+    cv2.setLogLevel(0)
+except Exception:
+    pass
+import numpy as np
 from fastapi import UploadFile, HTTPException
 from core.config import settings
 from modules.speech.process_audio import split_video_audio, speech2text
 from modules.task_manager import update_task_status, update_task_error, update_task_result, TaskStatus
 
-def extract_keyframes(video_path: str, interval_sec: float = 5.0, output_dir: str = None) -> list[dict]:
-    """Extracts keyframe images at fixed time intervals (e.g., every 5 seconds).
+# --- Keyframe Extraction Helper Utilities ---
+
+def _is_frame_clear(frame: np.ndarray, blur_threshold: float = 80.0, brightness_threshold: float = 40.0) -> tuple[bool, float]:
+    """Checks if an in-memory frame image is sharp and illuminated sufficiently.
+
+    Args:
+        frame: OpenCV BGR image array.
+        blur_threshold: Minimum variance of Laplacian for blur detection.
+        brightness_threshold: Minimum mean grayscale value for brightness.
+
+    Returns:
+        tuple[bool, float]: (is_clear: bool, sharpness_score: float).
+    """
+    if frame is None:
+        return False, 0.0
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    laplacian_var = float(cv2.Laplacian(gray, cv2.CV_64F).var())
+    avg_brightness = float(np.mean(gray))
+    if laplacian_var < blur_threshold or avg_brightness < brightness_threshold:
+        return False, laplacian_var
+    return True, laplacian_var
+
+def _compute_hsv_diff(prev_frame: np.ndarray, curr_frame: np.ndarray) -> float:
+    """Computes normalized HSV histogram distance between two frames to detect scene changes.
+
+    Args:
+        prev_frame: Previous OpenCV frame array.
+        curr_frame: Current OpenCV frame array.
+
+    Returns:
+        float: Difference score in range [0.0, 1.0] where higher values indicate scene transitions.
+    """
+    if prev_frame is None or curr_frame is None:
+        return 1.0
+    prev_hsv = cv2.cvtColor(prev_frame, cv2.COLOR_BGR2HSV)
+    curr_hsv = cv2.cvtColor(curr_frame, cv2.COLOR_BGR2HSV)
+    hist_prev = cv2.calcHist([prev_hsv], [0, 1], None, [50, 60], [0, 180, 0, 256])
+    hist_curr = cv2.calcHist([curr_hsv], [0, 1], None, [50, 60], [0, 180, 0, 256])
+    cv2.normalize(hist_prev, hist_prev, 0, 1, cv2.NORM_MINMAX)
+    cv2.normalize(hist_curr, hist_curr, 0, 1, cv2.NORM_MINMAX)
+    correlation = cv2.compareHist(hist_prev, hist_curr, cv2.HISTCMP_CORREL)
+    return max(0.0, float(1.0 - correlation))
+
+class suppress_c_stderr:
+    """Context manager that redirects C-level file descriptor 2 (stderr) to os.devnull."""
+    def __enter__(self):
+        try:
+            self.null_fd = os.open(os.devnull, os.O_WRONLY)
+            self.save_fd = os.dup(2)
+            os.dup2(self.null_fd, 2)
+        except Exception:
+            self.save_fd = None
+        return self
+
+    def __exit__(self, *args):
+        if hasattr(self, 'save_fd') and self.save_fd is not None:
+            try:
+                os.dup2(self.save_fd, 2)
+                os.close(self.save_fd)
+                os.close(self.null_fd)
+            except Exception:
+                pass
+
+# --- Main Keyframe Extraction Function ---
+
+def extract_keyframes(
+    video_path: str,
+    interval_sec: float = 5.0,
+    output_dir: str = None,
+    time_range: tuple = None,
+    max_scene_gap_sec: float = 7.0,
+    detect_scenes: bool = True,
+    scene_threshold: float = 0.35,
+    min_clarity: bool = True,
+    blur_threshold: float = 80.0,
+    detect_persons: bool = False
+) -> list[dict]:
+    """Extracts scene-aware, quality-validated keyframes across a video stream.
+
+    Enforces a maximum safety gap constraint (max_scene_gap_sec = 7.0) to prevent dialogue
+    accumulation and text overflow in downstream manga speech bubbles.
 
     Args:
         video_path: Path to input video file (absolute or relative to settings.INPUT_DIR).
-        interval_sec: Interval in seconds between extracted keyframes.
+        interval_sec: Default interval in seconds between extracted keyframes.
         output_dir: Output directory for keyframe images. Defaults to settings.OUTPUT_DIR/keyframes.
+        time_range: Optional tuple (start_sec, end_sec) to constrain extraction window.
+        max_scene_gap_sec: Maximum allowable time gap between consecutive keyframes (safety constraint).
+        detect_scenes: Whether to trigger keyframes on HSV histogram scene changes.
+        scene_threshold: Threshold difference for scene change detection (0.0 to 1.0).
+        min_clarity: Whether to skip blurry or dark candidate frames.
+        blur_threshold: Laplacian variance threshold for sharpness filtering.
+        detect_persons: Whether to run PersonSegmenter to score human subject presence.
 
     Returns:
-        list[dict]: List of frame metadata dicts with 'path', 'timestamp', and 'frame_index'.
+        list[dict]: List of frame metadata dictionaries containing path, timestamp, frame_index, etc.
     """
     if not os.path.isabs(video_path):
         potential_path = os.path.join(settings.INPUT_DIR, video_path)
@@ -32,40 +122,106 @@ def extract_keyframes(video_path: str, interval_sec: float = 5.0, output_dir: st
 
     os.makedirs(output_dir, exist_ok=True)
 
-    cap = cv2.VideoCapture(video_path)
-    if not cap.isOpened():
-        raise RuntimeError(f"Could not open video file: {video_path}")
+    with suppress_c_stderr():
+        cap = cv2.VideoCapture(video_path)
+        if not cap.isOpened():
+            raise RuntimeError(f"Could not open video file: {video_path}")
 
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    if fps <= 0:
-        fps = 30.0
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        if fps <= 0:
+            fps = 30.0
 
-    frame_step = max(1, int(fps * interval_sec))
-    base_name = os.path.splitext(os.path.basename(video_path))[0]
-    
-    extracted_frames = []
-    frame_count = 0
+        total_video_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        video_duration_sec = total_video_frames / fps if total_video_frames > 0 else 0.0
 
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
+        if time_range:
+            start_sec, end_sec = time_range
+            start_frame_idx = max(0, int(start_sec * fps))
+            end_frame_idx = min(total_video_frames - 1, int(end_sec * fps)) if total_video_frames > 0 else int(end_sec * fps)
+        else:
+            start_frame_idx = 0
+            end_frame_idx = total_video_frames - 1 if total_video_frames > 0 else 99999999
 
-        if frame_count % frame_step == 0:
-            timestamp = round(frame_count / fps, 2)
-            filename = f"{base_name}_frame_{int(timestamp):04d}s.png"
-            save_path = os.path.join(output_dir, filename)
-            cv2.imwrite(save_path, frame)
-            
-            extracted_frames.append({
-                "path": os.path.abspath(save_path),
-                "timestamp": timestamp,
-                "frame_index": frame_count
-            })
+        # Fine sampling step: check candidate frames every ~0.5 seconds
+        sample_step = max(1, int(fps * 0.5))
 
-        frame_count += 1
+        person_segmenter = None
+        if detect_persons:
+            try:
+                from modules.frame.human_detector import PersonSegmenter
+                person_segmenter = PersonSegmenter()
+            except Exception:
+                person_segmenter = None
 
-    cap.release()
+        base_name = os.path.splitext(os.path.basename(video_path))[0]
+        extracted_frames = []
+        
+        last_saved_timestamp = -999.0
+        prev_frame_bgr = None
+        
+        cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame_idx)
+        curr_frame_idx = start_frame_idx
+
+        while curr_frame_idx <= end_frame_idx:
+            cap.set(cv2.CAP_PROP_POS_FRAMES, curr_frame_idx)
+            ret, frame = cap.read()
+            if not ret or frame is None:
+                break
+
+            timestamp = round(curr_frame_idx / fps, 2)
+            time_since_last = timestamp - last_saved_timestamp
+
+            is_clear, sharpness = _is_frame_clear(frame, blur_threshold=blur_threshold)
+            hsv_diff = _compute_hsv_diff(prev_frame_bgr, frame) if prev_frame_bgr is not None else 1.0
+
+            # Evaluate extraction triggers
+            trigger_reason = None
+
+            if len(extracted_frames) == 0:
+                trigger_reason = "initial"
+            elif time_since_last >= max_scene_gap_sec:
+                trigger_reason = "safety_gap_7s"
+            elif detect_scenes and hsv_diff >= scene_threshold:
+                trigger_reason = "scene_change"
+            elif time_since_last >= interval_sec:
+                trigger_reason = "interval"
+
+            # Apply clarity filtering unless forced by 7-second safety gap or initial frame
+            if trigger_reason:
+                if min_clarity and not is_clear and trigger_reason not in ["safety_gap_7s", "initial"]:
+                    prev_frame_bgr = frame.copy()
+                    curr_frame_idx += sample_step
+                    continue
+
+                has_person = False
+                if person_segmenter is not None:
+                    try:
+                        _, _, masks, _ = person_segmenter.segment(frame)
+                        has_person = len(masks) > 0
+                    except Exception:
+                        has_person = False
+
+                filename = f"{base_name}_frame_{int(timestamp):04d}s.png"
+                save_path = os.path.join(output_dir, filename)
+                cv2.imwrite(save_path, frame)
+
+                extracted_frames.append({
+                    "path": os.path.abspath(save_path),
+                    "timestamp": timestamp,
+                    "frame_index": curr_frame_idx,
+                    "sharpness_score": round(sharpness, 2),
+                    "hsv_diff": round(hsv_diff, 3),
+                    "has_person": has_person,
+                    "trigger": trigger_reason
+                })
+
+                last_saved_timestamp = timestamp
+                prev_frame_bgr = frame.copy()
+
+            curr_frame_idx += sample_step
+
+        cap.release()
+
     return extracted_frames
 
 def split_vid(video_path: str, partition_length: float = 20.0, output_dir: str = None) -> list[str]:
@@ -158,21 +314,26 @@ async def process_video(file: UploadFile) -> tuple[str, str, str | None]:
         raise HTTPException(status_code=500, detail=f"Processing failed: {str(e)}")
 
 async def process_video_task(task_id: str, file_location: str, original_filename: str, language: str = "en"):
-    """Background task for video processing."""
+    """Background task for video processing and end-to-end manga volume generation."""
     try:
         update_task_status(task_id, TaskStatus.PROCESSING)
-        audio_path, video_path = split_video_audio(file_location)
         
+        from modules.frame.end_to_end_vid2manga import process_video_to_manga_volume
+        manga_res = process_video_to_manga_volume(file_location, language=language)
+
+        audio_path, video_path = split_video_audio(file_location)
         audio_rel = os.path.relpath(audio_path, settings.OUTPUT_DIR).replace("\\", "/")
         video_rel = os.path.relpath(video_path, settings.OUTPUT_DIR).replace("\\", "/")
-        
-        res = speech2text(os.path.basename(audio_path), language=language)
-        
+
         update_task_result(task_id, {
             "video_url": f"/output/{video_rel}",
             "audio_url": f"/output/{audio_rel}",
-            "text": res.get("text", ""),
-            "segments": res.get("segments", [])
+            "pdf_url": manga_res.get("pdf_url"),
+            "manga_urls": manga_res.get("manga_urls", []),
+            "total_pages": manga_res.get("total_pages", 0),
+            "total_keyframes": manga_res.get("total_keyframes", 0),
+            "text": manga_res.get("text", ""),
+            "segments": manga_res.get("segments", [])
         })
     except Exception as e:
         stderr_msg = f" | FFmpeg stderr: {e.stderr}" if hasattr(e, 'stderr') else ""

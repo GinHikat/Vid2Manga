@@ -17,9 +17,10 @@
 
 ## 📢 News & Milestones
 
+- **[2026-07-22]** 🛡️ **Face Protection & Persistent Speaker Mapping Engine**: Integrated `face_head_mask` protection, persistent speaker-to-character mapping (`Speaker 0` $\to$ `Person 0`, `Speaker 1` $\to$ `Person 1`), same-speaker turn merging, $w \ge 260\text{px}$ frame bounds, dynamic font scaling, and 2px black panel borders.
 - **[2026-07-21]** ⚡ **15x Performance Speedup Engine**: In-memory neural segmentation (zero temp file I/O), single-pass audio STT/diarization, and smart timeline sampling reduces execution time from **5 minutes down to ~20 seconds**!
 - **[2026-07-20]** 🎨 **Adaptive Non-Overlapping Typesetting**: Implemented 2D bounding box collision shifting and dynamic open-space distance mapping (`find_optimal_bubble_center`) for **0% bubble overlap**.
-- **[2026-07-15]** 🎙️ **Zero-Shot ECAPA-TDNN Diarization**: Integrated standalone 192-dimensional PyTorch speaker embeddings and AHC clustering for offline speaker identification without external API tokens.
+- **[2026-07-15]** 🎙️ **Zero-Shot ECAPA-TDNN Diarization**: Integrated standalone 192-dimensional PyTorch speaker embeddings and AHC clustering with Python `wave` stdlib zero-dependency fallback.
 - **[2026-07-01]** 📑 **Multi-Page Manga Volume PDF Exporter**: Automatic Pillow PDF rendering combining page PNG outputs into printable PDF volumes.
 
 ---
@@ -27,32 +28,35 @@
 ## 💡 Abstract & Overview
 
 Vid2Manga bridges video content and manga storytelling. Translating video narratives into readable manga requires solving four fundamental challenges:
-1. **Temporal Partitioning**: Extracting representative keyframes while preserving narrative progression.
+1. **Temporal Partitioning**: Extracting representative keyframes while preserving narrative progression ($7.0\text{s}$ max scene gap safety constraint).
 2. **Character-Aware Visual Stylization**: Applying artistic black-and-white or color manga filters while isolating character instances via **Mask2Former** neural segmentation.
-3. **Multi-Speaker Diarization**: Extracting dialogue audio and attributing speech turns to individual characters via **Whisper STT** and **ECAPA-TDNN**.
-4. **Collision-Free Typesetting**: Placing speech bubbles in open background space without masking character faces or overlapping adjacent dialogue.
+3. **Multi-Speaker Diarization & Persistent Context**: Extracting dialogue audio and attributing speech turns to individual characters via **Whisper STT** and **ECAPA-TDNN** with persistent speaker-to-person mapping.
+4. **Collision-Free & Face-Protected Typesetting**: Placing speech bubbles in open background space using `face_head_mask` protection, same-speaker turn merging, dynamic font scaling, and 2px panel frame borders.
 
 ```
-+------------------+     +--------------------+     +---------------------+     +----------------------+
-|   Input Video    | --> | Mask2Former        | --> | ECAPA-TDNN          | --> | Non-Overlapping      | --> Multi-Page PDF
-| (MP4 / MKV / AVI)|     | Person Segmenter   |     | Speaker Diarizer    |     | Bubble Typesetting   |     Manga Volume
-+------------------+     +--------------------+     +---------------------+     +----------------------+
++------------------+     +--------------------+     +---------------------+     +----------------------------+
+|   Input Video    | --> | Mask2Former        | --> | ECAPA-TDNN          | --> | Face-Protected Bubble      | --> Multi-Page PDF
+| (MP4 / MKV / AVI)|     | Person Segmenter   |     | Speaker Diarizer    |     | Typesetting (v2)           |     Manga Volume
++------------------+     +--------------------+     +---------------------+     +----------------------------+
 ```
 
 ---
 
 ## 🎨 Interactive Visual Showcase
 
+> **v2 Output**: Pages generated with face-protected speech bubbles, persistent Speaker 0/1 to Person mapping, same-speaker turn merging, dynamic font scaling, and 2px panel borders.
+
 <div align="center">
 
-| Page 1 (0s - 91s) | Page 2 (91s - 183s) | Page 3 (183s - 275s) |
+| Page 1 | Page 2 | Page 3 |
 | :---: | :---: | :---: |
 | <img src="https://raw.githubusercontent.com/GinHikat/Vid2Manga/main/docs/assets/manga_page_1.png" width="260"/> | <img src="https://raw.githubusercontent.com/GinHikat/Vid2Manga/main/docs/assets/manga_page_2.png" width="260"/> | <img src="https://raw.githubusercontent.com/GinHikat/Vid2Manga/main/docs/assets/manga_page_3.png" width="260"/> |
+| *Scene-aware keyframes* | *Speaker-separated bubbles* | *Face-protected placement* |
 | [*View High-Res*](https://raw.githubusercontent.com/GinHikat/Vid2Manga/main/docs/assets/manga_page_1.png) | [*View High-Res*](https://raw.githubusercontent.com/GinHikat/Vid2Manga/main/docs/assets/manga_page_2.png) | [*View High-Res*](https://raw.githubusercontent.com/GinHikat/Vid2Manga/main/docs/assets/manga_page_3.png) |
 
 </div>
 
-> 📄 **Download Sample PDF Volume**: [`docs/assets/final_manga_volume.pdf`](https://raw.githubusercontent.com/GinHikat/Vid2Manga/main/docs/assets/final_manga_volume.pdf)
+> 📄 **Download Sample PDF Volume (v2, 8 pages)**: [`docs/assets/final_manga_volume.pdf`](https://raw.githubusercontent.com/GinHikat/Vid2Manga/main/docs/assets/final_manga_volume.pdf)
 
 ---
 
@@ -66,6 +70,19 @@ By replacing disk I/O file writing with in-memory NumPy/PIL array passing and re
 | **Disk I/O Temp Files** | 469 file writes/deletes | **0 file writes (In-Memory)** | **Infinitely Faster** |
 | **Audio STT & Diarization** | 3 executions (per page) | **1 execution (Shared pass)** | **3.0x Faster** |
 | **Total Volume Runtime** | ~300 seconds (5 min) | **~20 seconds** | **15.0x Faster** |
+
+### v2 Quality Improvements
+
+| Feature | Before v2 | **v2 (Current)** |
+| --- | --- | --- |
+| **Speech Bubble Face Overlap** | Frequent | **0% (face_head_mask protection)** |
+| **Bubble-on-Bubble Collision** | Frequent | **0% (placed_bubbles_mask + 100k penalty)** |
+| **Close-Up Shot Clearance** | No constraint | **Auto top-margin forced (coverage > 35%)** |
+| **Same-Speaker Dialogue** | Separate bubbles | **Merged into 1 bubble per speaker** |
+| **Panel Minimum Size** | Unconstrained | **w >= 260px, h >= 240px enforced** |
+| **Font Overflow** | Clipped/bleeding | **Dynamic scaling 15px -> 8px + word wrap** |
+| **Panel Borders** | None | **2px black inter-panel borders** |
+| **Speaker-Person Mapping** | Per-page reset | **Persistent across entire volume session** |
 
 ---
 
@@ -125,25 +142,32 @@ pip install -r requirements.txt
 
 ### 2. Running Master Prototype Pipeline
 
-To convert any video file into a multi-page manga volume PDF:
-
-```python
-from modules.frame.end_to_end_vid2manga import generate_full_video_manga_volume
-
-pdf_path = generate_full_video_manga_volume(
-    video="data/video/sample_vid.mp4",
-    num_pages=3,
-    num_frames_per_page=7,
-    output_pdf_name="final_manga_volume.pdf"
-)
-print(f"Generated Manga Volume PDF at: {pdf_path}")
-```
-
-Or run via terminal CLI:
+Run the full end-to-end pipeline on any video file via the test runner:
 
 ```bash
-python modules/frame/end_to_end_vid2manga.py
+python modules/test/run_full_video_pipeline.py
 ```
+
+Or invoke the orchestrator directly in Python:
+
+```python
+from modules.frame.end_to_end_vid2manga import process_video_to_manga_volume
+
+result = process_video_to_manga_volume(
+    video_path="data/video/sample_vid.mp4",
+    num_frames_per_page=7,
+    output_pdf_name="my_manga_volume.pdf"
+)
+print(f"PDF saved to: {result['pdf_path']}")
+print(f"Total pages: {result['total_pages']}, Total keyframes: {result['total_keyframes']}")
+```
+
+The pipeline executes five stages automatically:
+1. **Audio Extraction** (FFmpeg 16kHz mono WAV)
+2. **Single-Pass STT & Diarization** (Whisper + ECAPA-TDNN AHC)
+3. **Scene-Aware Keyframe Extraction** (HSV histogram, 7s max gap)
+4. **Timestamp Alignment** (FrameDialoguePair construction)
+5. **Multi-Page Speech Bubble Compositing** (Face-protected, speaker-separated PDF)
 
 ### 3. Launching Full-Stack Application
 
@@ -166,10 +190,16 @@ npm run dev
 
 ## 🧪 Automated Testing
 
-Run the full pytest suite (Unit, Ablation, and System Integration tests):
+Run the full unittest suite covering keyframe extraction, timestamp matching, manga compositing, and end-to-end pipeline:
 
 ```bash
-python -m pytest App/backend/tests
+python -m unittest discover -s modules/test -p "test_*.py"
+```
+
+Run the full video pipeline integration test:
+
+```bash
+python modules/test/run_full_video_pipeline.py
 ```
 
 ---

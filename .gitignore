@@ -3,6 +3,7 @@
 App/backend/input/
 App/backend/output/
 modules/speech/models/
+modules/test/
 models/
 secrets/
 .pytest_cache
@@ -18,6 +19,7 @@ notebook/*
 *.jfif
 *.pdf
 images/
+
 
 GEMINI.md
 state.md
