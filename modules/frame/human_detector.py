@@ -84,20 +84,16 @@ class PersonSegmenter:
         else:
             image_small = image
 
-        # Prepare inputs for the model using downscaled image
-        inputs = self.processor(images=[image_small], return_tensors="pt").to(self.device)
-        
-        # Inference
+        # Inference wrapped in no_grad to prevent autograd graph memory leaks
         with torch.no_grad():
-            outputs = self.model(**inputs)
-            
-        # Post-processing targets original full image dimensions target_sizes=[image_np.shape[:2]]
-        outputs = self.processor.post_process_instance_segmentation(
-            outputs, 
-            target_sizes=[image_np.shape[:2]], 
-            threshold=0.3, 
-            mask_threshold=0.3
-        )[0]
+            inputs = self.processor(images=[image_small], return_tensors="pt").to(self.device)
+            raw_outputs = self.model(**inputs)
+            outputs = self.processor.post_process_instance_segmentation(
+                raw_outputs, 
+                target_sizes=[image_np.shape[:2]], 
+                threshold=0.3, 
+                mask_threshold=0.3
+            )[0]
 
         instance_map = outputs["segmentation"].cpu().numpy()
 
@@ -116,4 +112,6 @@ class PersonSegmenter:
                     if area >= min_area:
                         person_masks.append(mask)
 
-        return image_np, instance_map, person_masks, outputs
+        # Explicitly delete PyTorch tensors to prevent RAM accumulation
+        del inputs, raw_outputs, outputs
+        return image_np, instance_map, person_masks, {}

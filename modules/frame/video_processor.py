@@ -146,12 +146,6 @@ def extract_keyframes(
         sample_step = max(1, int(fps * 0.5))
 
         person_segmenter = None
-        if detect_persons:
-            try:
-                from modules.frame.human_detector import PersonSegmenter
-                person_segmenter = PersonSegmenter()
-            except Exception:
-                person_segmenter = None
 
         base_name = os.path.splitext(os.path.basename(video_path))[0]
         extracted_frames = []
@@ -194,12 +188,6 @@ def extract_keyframes(
                     continue
 
                 has_person = False
-                if person_segmenter is not None:
-                    try:
-                        _, _, masks, _ = person_segmenter.segment(frame)
-                        has_person = len(masks) > 0
-                    except Exception:
-                        has_person = False
 
                 filename = f"{base_name}_frame_{int(timestamp):04d}s.png"
                 save_path = os.path.join(output_dir, filename)
