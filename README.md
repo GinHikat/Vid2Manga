@@ -3,7 +3,7 @@
 # Vid2Manga: Automated Video-to-Manga Storytelling Pipeline
 
 <p align="center">
-  <a href="https://caothanhbang455.github.io/Vid2Manga/"><img src="https://img.shields.io/badge/Demo%20Page-GitHub%20Pages-00e5ff?style=for-the-badge&logo=github&logoColor=white" alt="Demo Page"></a>
+  <a href="https://vid2-manga.vercel.app/"><img src="https://img.shields.io/badge/Demo%20Page-GitHub%20Pages-00e5ff?style=for-the-badge&logo=github&logoColor=white" alt="Demo Page"></a>
   <a href="docs/assets/final_manga_volume.pdf"><img src="https://img.shields.io/badge/PDF%20Volume-Download-ff0055?style=for-the-badge&logo=adobeacrobatreader&logoColor=white" alt="PDF Download"></a>
   <a href="https://github.com/GinHikat/Vid2Manga"><img src="https://img.shields.io/badge/Python-3.10%2B-green?style=for-the-badge&logo=python&logoColor=white" alt="Python Version"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge" alt="License"></a>

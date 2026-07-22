@@ -83,8 +83,9 @@ const VideoUpload = ({
         pollTaskStatus(taskId, selectedFile.name);
       }
     } catch (err) {
-      console.error(err);
-      onError("Failed to upload and process video. Please try again.");
+      console.error("Upload error:", err);
+      const detail = err.response?.data?.detail || err.message || "Network / CORS connection error";
+      onError(`Failed to upload video: ${detail}`);
     }
   };
 

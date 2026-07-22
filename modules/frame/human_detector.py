@@ -31,6 +31,15 @@ class PersonSegmenter:
             self.model.eval()
         return self
 
+    def unload(self):
+        """Frees model tensors and triggers garbage collection to prevent OOM."""
+        self.model = None
+        self.processor = None
+        import gc
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
     def segment(self, image_input: Any, min_area: int = 700, min_score: float = 0.7) -> Tuple[np.ndarray, np.ndarray, List[np.ndarray], Dict[str, Any]]:
         """Segments person instances in an image path, PIL Image, or NumPy array.
 

@@ -597,6 +597,15 @@ def process_video_to_manga_volume(
         page_images.append(page_save_path)
         page_urls.append(f"/output/{page_filename}")
 
+    # Unload Mask2Former and clean memory to prevent OOM
+    try:
+        from modules.frame.manga_processor import get_segmenter
+        get_segmenter().unload()
+    except Exception:
+        pass
+    import gc
+    gc.collect()
+
     # Step 5: Save multi-page PDF volume
     report("Compiling multi-page manga volume PDF...")
     pdf_save_path = os.path.join(settings.OUTPUT_DIR, output_pdf_name)
