@@ -74,14 +74,24 @@ class PersonSegmenter:
 
         image_np = np.array(image)
 
-        # Prepare inputs for the model
-        inputs = self.processor(images=[image], return_tensors="pt").to(self.device)
+        # Downscale image copy for model input to keep RAM footprint low (<200MB)
+        max_dim = 480
+        orig_w, orig_h = image.size
+        if max(orig_w, orig_h) > max_dim:
+            scale = max_dim / float(max(orig_w, orig_h))
+            new_w, new_h = max(1, int(orig_w * scale)), max(1, int(orig_h * scale))
+            image_small = image.resize((new_w, new_h), Image.Resampling.LANCZOS)
+        else:
+            image_small = image
+
+        # Prepare inputs for the model using downscaled image
+        inputs = self.processor(images=[image_small], return_tensors="pt").to(self.device)
         
         # Inference
         with torch.no_grad():
             outputs = self.model(**inputs)
             
-        # Post-processing
+        # Post-processing targets original full image dimensions target_sizes=[image_np.shape[:2]]
         outputs = self.processor.post_process_instance_segmentation(
             outputs, 
             target_sizes=[image_np.shape[:2]], 
