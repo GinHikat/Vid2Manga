@@ -12,6 +12,7 @@ class TaskStatus(str, Enum):
 class Task(BaseModel):
     id: str
     status: TaskStatus
+    progress: Optional[str] = None
     result: Optional[Dict[str, Any]] = None
     error: Optional[str] = None
 
@@ -30,6 +31,10 @@ def get_task(task_id: str) -> Optional[Task]:
 def update_task_status(task_id: str, status: TaskStatus):
     if task_id in tasks:
         tasks[task_id].status = status
+
+def update_task_progress(task_id: str, progress: str):
+    if task_id in tasks:
+        tasks[task_id].progress = progress
 
 def update_task_result(task_id: str, result: Dict[str, Any]):
     if task_id in tasks:

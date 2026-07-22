@@ -9,8 +9,10 @@ import "../css/LanguageSelector.css";
 const VideoUpload = ({
   onUploadStart,
   onUploadSuccess,
+  onProgressUpdate,
   onError,
   isLoading,
+  progressText,
 }) => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [language, setLanguage] = useState("en");
@@ -66,7 +68,6 @@ const VideoUpload = ({
     formData.append("language", language);
 
     try {
-      // Assuming backend is running on localhost:8000
       const response = await axios.post(
         `${API_BASE_URL}/convert`,
         formData,
@@ -95,11 +96,14 @@ const VideoUpload = ({
         );
         const task = statusRes.data;
 
+        if (task.progress && onProgressUpdate) {
+          onProgressUpdate(task.progress);
+        }
+
         if (task.status === "completed") {
           clearInterval(interval);
           const result = task.result;
 
-          // Construct full URLs if backend returns relative paths
           const baseUrl = API_BASE_URL.replace(/\/api$/, "");
           const video = result.video_url.startsWith("http")
             ? result.video_url
@@ -108,19 +112,24 @@ const VideoUpload = ({
             ? result.audio_url
             : `${baseUrl}${result.audio_url}`;
 
-          // Pass text and segments result
-          onUploadSuccess(video, audio, result.text, result.segments);
+          const pdf = result.pdf_url
+            ? (result.pdf_url.startsWith("http") ? result.pdf_url : `${baseUrl}${result.pdf_url}`)
+            : null;
+          const mangaPages = (result.manga_urls || []).map((u) =>
+            u.startsWith("http") ? u : `${baseUrl}${u}`
+          );
+
+          onUploadSuccess(video, audio, result.text, result.segments, pdf, mangaPages);
         } else if (task.status === "failed") {
           clearInterval(interval);
           onError(`Processing failed: ${task.error}`);
         }
-        // If pending or processing, continue polling
       } catch (err) {
         clearInterval(interval);
         console.error(err);
         onError("Error checking task status.");
       }
-    }, 2000); // Poll every 2 seconds
+    }, 1500); // Poll every 1.5 seconds
   };
 
   const onButtonClick = () => {
@@ -163,9 +172,8 @@ const VideoUpload = ({
             <div className="loading-state">
               <Loader2 className="animate-spin icon-large" size={64} />
               <h3>Processing Video...</h3>
-              <p>
-                This process extracts audio and video frames for manga
-                conversion.
+              <p className="mono-subtext" style={{ color: "var(--accent-color)", fontWeight: "bold", marginTop: "0.5rem", fontSize: "0.9rem" }}>
+                {progressText || "[1/5] Initializing speech & visual pipeline..."}
               </p>
             </div>
           ) : (

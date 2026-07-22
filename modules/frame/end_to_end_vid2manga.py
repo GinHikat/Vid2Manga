@@ -520,13 +520,15 @@ def process_video_to_manga_volume(
         stylize_style (str): Artistic filter identifier ('a', 'b', or 'c').
         language (str): STT transcription language code ('en', 'vi', etc.).
         output_pdf_name (str, optional): Filename for output PDF. Defaults to '<video_name>_manga_volume.pdf'.
-        page_width (int): Page canvas width in pixels (default: 1000).
-        page_height (int): Page canvas height in pixels (default: 1400).
-        seed (int, optional): Random seed for layout generation (default: None).
-
-    Returns:
-        dict: Payload containing pdf_url, manga_urls, total_pages, total_keyframes, segments, text.
     """
+    def report(msg):
+        print(msg)
+        if progress_callback:
+            try:
+                progress_callback(msg)
+            except Exception:
+                pass
+
     if not os.path.isabs(video_path):
         potential_path = os.path.join(settings.INPUT_DIR, video_path)
         if os.path.exists(potential_path):
@@ -540,12 +542,16 @@ def process_video_to_manga_volume(
         output_pdf_name = f"{base_name}_manga_volume.pdf"
 
     # Step 1: Audio extraction & Speech STT/Diarization
+    report("[1/5] Extracting 16kHz mono WAV audio and soundless video...")
     audio_path, video_clean_path = split_video_audio(video_path)
+
+    report("[2/5] Running single-pass Speech-to-Text and ECAPA-TDNN Speaker Diarization...")
     speech_res = speech2text(os.path.basename(audio_path), language=language)
     speech_segments = speech_res.get("segments", [])
     full_transcript = speech_res.get("text", "")
 
     # Step 2: Scene-aware keyframe extraction with 7s max scene gap constraint
+    report("[3/5] Extracting scene-aware keyframes (7.0s max scene gap constraint)...")
     from modules.frame.video_processor import extract_keyframes
     keyframes = extract_keyframes(
         video_path=video_path,
@@ -556,6 +562,7 @@ def process_video_to_manga_volume(
     )
 
     # Step 3: Keyframe & Dialogue Timestamp Alignment
+    report(f"[4/5] Aligning {len(keyframes)} keyframe timestamps with {len(speech_segments)} speech turns...")
     from modules.frame.timestamp_matcher import match_keyframes_with_dialogue
     frame_dialogue_pairs = match_keyframes_with_dialogue(keyframes, speech_segments)
 
@@ -565,8 +572,11 @@ def process_video_to_manga_volume(
     page_images = []
     page_urls = []
     global_speaker_map = {}
+    total_pages = max(1, (len(frame_dialogue_pairs) + num_frames_per_page - 1) // num_frames_per_page)
 
     for i in range(0, len(frame_dialogue_pairs), num_frames_per_page):
+        page_num = len(page_images) + 1
+        report(f"[5/5] Compositing Manga Page {page_num} of {total_pages} (Mask2Former face protection & speaker alignment)...")
         chunk_pairs = frame_dialogue_pairs[i:i + num_frames_per_page]
         layout_seed = (seed + i) if seed is not None else None
         page_pil = create_manga_page_with_dialogue(
@@ -579,7 +589,7 @@ def process_video_to_manga_volume(
             global_speaker_map=global_speaker_map
         )
 
-        page_filename = f"{base_name}_page_{len(page_images)+1:03d}.png"
+        page_filename = f"{base_name}_page_{page_num:03d}.png"
         page_save_path = os.path.join(settings.OUTPUT_DIR, page_filename)
         page_pil.save(page_save_path)
 
@@ -587,6 +597,7 @@ def process_video_to_manga_volume(
         page_urls.append(f"/output/{page_filename}")
 
     # Step 5: Save multi-page PDF volume
+    report("Compiling multi-page manga volume PDF...")
     pdf_save_path = os.path.join(settings.OUTPUT_DIR, output_pdf_name)
     save_manga_pages_to_pdf(page_images, pdf_save_path)
 

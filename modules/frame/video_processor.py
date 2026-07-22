@@ -318,8 +318,13 @@ async def process_video_task(task_id: str, file_location: str, original_filename
     try:
         update_task_status(task_id, TaskStatus.PROCESSING)
         
+        from modules.task_manager import update_task_progress
         from modules.frame.end_to_end_vid2manga import process_video_to_manga_volume
-        manga_res = process_video_to_manga_volume(file_location, language=language)
+
+        def progress_cb(msg):
+            update_task_progress(task_id, msg)
+
+        manga_res = process_video_to_manga_volume(file_location, language=language, progress_callback=progress_cb)
 
         audio_path, video_path = split_video_audio(file_location)
         audio_rel = os.path.relpath(audio_path, settings.OUTPUT_DIR).replace("\\", "/")

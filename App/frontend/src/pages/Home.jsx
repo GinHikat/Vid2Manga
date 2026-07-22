@@ -13,10 +13,7 @@ function Home() {
         </div>
         <div className="nav-container">
           <Link to="/convert" className="home-nav-btn">
-            <Video size={16} /> Video Converter
-          </Link>
-          <Link to="/manga-generator" className="home-nav-btn">
-            <Columns size={16} /> Manga Generator
+            <Video size={16} /> Vid2Manga Studio
           </Link>
         </div>
       </header>
@@ -33,14 +30,11 @@ function Home() {
                 Video to <span className="accent">Manga</span>
               </h1>
               <p className="hero-subtitle">
-                Convert videos into highly stylized manga layouts with custom visual filter pipelines and dynamic speaker-aware typesetting in seconds.
+                Convert videos and image sets into highly stylized manga layouts with face-protected speech bubbles and dynamic speaker-aware typesetting.
               </p>
               <div className="hero-actions">
                 <Link to="/convert" className="cta-button primary">
-                  Video Converter <Video size={18} />
-                </Link>
-                <Link to="/manga-generator" className="cta-button secondary">
-                  Manga Generator <Columns size={18} />
+                  Launch Studio Workbench <Video size={18} />
                 </Link>
               </div>
             </div>
@@ -63,49 +57,75 @@ function Home() {
 
         <section id="features" className="features-section">
           <div className="section-header">
-            <h2 className="section-title">Automated Production Line</h2>
+            <h2 className="section-title">5-Step Master Pipeline Architecture</h2>
             <p className="section-subtitle">
-              Advanced computer vision and natural speech diarization pipelines fused into a singular design tool.
+              Automated computer vision and speech diarization stages transforming raw video into printable manga volumes.
             </p>
           </div>
           
-          <div className="features-bento">
-            <div className="bento-cell highlight-cell">
-              <div className="bento-content">
-                <div className="icon-wrapper">
-                  <Zap size={24} />
-                </div>
-                <h3>Diarized Speech Breakdown</h3>
-                <p>
-                  Synchronize dialogue transcription directly with characters using pyannote-audio and zero-shot ECAPA-TDNN speaker clustering.
-                </p>
-                <div className="bento-mono-tag">MODULE: /speech/process_audio.py</div>
-              </div>
-            </div>
-            
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem", marginTop: "1rem" }}>
             <div className="bento-cell standard-cell">
               <div className="bento-content">
-                <div className="icon-wrapper">
-                  <PenTool size={24} />
+                <div style={{ fontSize: "0.8rem", fontFamily: "var(--font-mono)", color: "var(--accent-color)", fontWeight: "bold", marginBottom: "0.5rem" }}>
+                  STEP 01
                 </div>
-                <h3>Dynamic Stylization Filters</h3>
+                <h3>Video Keyframe Capturing</h3>
                 <p>
-                  Choose between Classic Black & White (CLAHE + Adaptive Thresholding), Cel-shaded Anime colors, or Edge-Preserving Comic smoothing.
+                  Extracts scene-aware keyframes using HSV histogram differences, Laplacian clarity filtering, and a 7.0s max scene gap constraint.
                 </p>
-                <div className="bento-mono-tag">MODULE: /frame/stylizer.py</div>
+                <div className="bento-mono-tag">MODULE: video_processor.py</div>
               </div>
             </div>
-            
+
             <div className="bento-cell standard-cell">
               <div className="bento-content">
-                <div className="icon-wrapper">
-                  <Star size={24} />
+                <div style={{ fontSize: "0.8rem", fontFamily: "var(--font-mono)", color: "var(--accent-color)", fontWeight: "bold", marginBottom: "0.5rem" }}>
+                  STEP 02
                 </div>
-                <h3>Binary Splitting Layouts</h3>
+                <h3>Mask2Former Person Masking</h3>
                 <p>
-                  Automatically partition pages with a Recursive Binary Splitting Tree algorithm that resolves aspect ratios without frame overlapping.
+                  In-memory neural instance segmentation detecting character bounding boxes and building face/head protection masks (`face_head_mask`).
                 </p>
-                <div className="bento-mono-tag">MODULE: /frame/layout_generator.py</div>
+                <div className="bento-mono-tag">MODULE: human_detector.py</div>
+              </div>
+            </div>
+
+            <div className="bento-cell standard-cell">
+              <div className="bento-content">
+                <div style={{ fontSize: "0.8rem", fontFamily: "var(--font-mono)", color: "var(--accent-color)", fontWeight: "bold", marginBottom: "0.5rem" }}>
+                  STEP 03
+                </div>
+                <h3>ECAPA-TDNN Diarization</h3>
+                <p>
+                  Extracts 192-dim voice embeddings and clusters speaker identities via AHC with persistent global speaker-to-person mapping.
+                </p>
+                <div className="bento-mono-tag">MODULE: diarization.py</div>
+              </div>
+            </div>
+
+            <div className="bento-cell standard-cell">
+              <div className="bento-content">
+                <div style={{ fontSize: "0.8rem", fontFamily: "var(--font-mono)", color: "var(--accent-color)", fontWeight: "bold", marginBottom: "0.5rem" }}>
+                  STEP 04
+                </div>
+                <h3>Face-Protected Typesetting</h3>
+                <p>
+                  Distance-transform open-space bubble placement, zero bubble-on-bubble overlap penalty, and dynamic font size scaling.
+                </p>
+                <div className="bento-mono-tag">MODULE: bubble_processor.py</div>
+              </div>
+            </div>
+
+            <div className="bento-cell standard-cell">
+              <div className="bento-content">
+                <div style={{ fontSize: "0.8rem", fontFamily: "var(--font-mono)", color: "var(--accent-color)", fontWeight: "bold", marginBottom: "0.5rem" }}>
+                  STEP 05
+                </div>
+                <h3>A4 Manga PDF Compositing</h3>
+                <p>
+                  Recursive Binary Splitting layout tree compositing with 2px black inter-panel borders and multi-page Pillow PDF volume export.
+                </p>
+                <div className="bento-mono-tag">MODULE: end_to_end_vid2manga.py</div>
               </div>
             </div>
           </div>

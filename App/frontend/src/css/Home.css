@@ -157,41 +157,41 @@
 
 /* Features Section */
 .features-section {
-  padding: 6rem 0;
+  padding: 2.5rem 0;
   border-top: 1px solid var(--border-subtle);
 }
 
 .section-header {
   text-align: left;
-  margin-bottom: 4rem;
+  margin-bottom: 1.5rem;
   max-width: 60ch;
 }
 
 .section-title {
-  font-size: 2.5rem;
+  font-size: 2rem;
   font-weight: 800;
   letter-spacing: -0.04em;
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
 }
 
 .section-subtitle {
-  font-size: 1.05rem;
+  font-size: 0.95rem;
   color: var(--text-secondary);
-  line-height: 1.5;
+  line-height: 1.4;
 }
 
 /* Bento Grid */
 .features-bento {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 1.5rem;
+  gap: 1rem;
 }
 
 .bento-cell {
   background-color: var(--surface-bg);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
-  padding: 2.5rem;
+  padding: 1.1rem 1.25rem;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -201,9 +201,9 @@
 }
 
 .bento-cell:hover {
-  transform: translateY(-4px);
+  transform: translateY(-2px);
   border-color: var(--border-strong);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
 }
 
 /* Asymmetric Accent Cell */
@@ -219,14 +219,14 @@
 
 .bento-cell .icon-wrapper {
   background-color: var(--surface-accent);
-  width: 48px;
-  height: 48px;
+  width: 36px;
+  height: 36px;
   border-radius: var(--radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--accent-color);
-  margin-bottom: 2rem;
+  margin-bottom: 1rem;
   border: 1px solid var(--border-subtle);
 }
 
@@ -236,22 +236,22 @@
 }
 
 .bento-cell h3 {
-  font-size: 1.4rem;
+  font-size: 1.05rem;
   font-weight: 700;
   letter-spacing: -0.02em;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.4rem;
 }
 
 .bento-cell p {
   color: var(--text-secondary);
-  font-size: 0.95rem;
-  line-height: 1.6;
-  margin-bottom: 2.5rem;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  margin-bottom: 0.75rem;
 }
 
 .bento-mono-tag {
   font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   color: var(--text-tertiary);
   letter-spacing: 0.05em;
   margin-top: auto;

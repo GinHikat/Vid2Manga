@@ -1,16 +1,16 @@
 import React, { useRef } from "react";
-import { Download, Film, Music, FileText } from "lucide-react";
+import { Download, Film, Music, FileText, BookOpen, ExternalLink } from "lucide-react";
 import "../css/ResultDisplay.css";
 import "../css/TextResult.css";
 
-const ResultDisplay = ({ videoUrl, audioUrl, text, segments }) => {
+const ResultDisplay = ({ videoUrl, audioUrl, text, segments, pdfUrl, mangaUrls }) => {
   const videoRef = useRef(null);
   const audioRef = useRef(null);
 
   const handleJump = (startTime) => {
     if (videoRef.current) {
       videoRef.current.currentTime = startTime;
-      videoRef.current.play().catch(() => {}); // Play might fail if not interacted with
+      videoRef.current.play().catch(() => {});
     }
     if (audioRef.current) {
       audioRef.current.currentTime = startTime;
@@ -21,6 +21,43 @@ const ResultDisplay = ({ videoUrl, audioUrl, text, segments }) => {
   return (
     <div className="result-display-container">
       <h2>Conversion Results</h2>
+
+      {pdfUrl && (
+        <div className="manga-volume-card result-card" style={{ marginBottom: "1.5rem", border: "1px solid var(--accent-color)" }}>
+          <div className="card-header">
+            <BookOpen size={24} style={{ color: "var(--accent-color)" }} />
+            <h3>Generated Manga Volume PDF</h3>
+          </div>
+          <div style={{ padding: "1rem 0" }}>
+            <p style={{ margin: "0 0 1rem 0", color: "#aaa" }}>
+              Your video has been transformed into a stylized multi-page manga volume with face-protected speech bubbles.
+            </p>
+            <a href={pdfUrl} target="_blank" rel="noreferrer" download className="download-btn primary-btn" style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", width: "auto", padding: "0.75rem 1.5rem" }}>
+              <Download size={18} /> Download Full Manga PDF Volume
+            </a>
+          </div>
+
+          {mangaUrls && mangaUrls.length > 0 && (
+            <div className="manga-gallery" style={{ marginTop: "1rem" }}>
+              <h4 style={{ marginBottom: "0.75rem", fontSize: "0.95rem", color: "#ddd" }}>Manga Pages ({mangaUrls.length})</h4>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "1rem" }}>
+                {mangaUrls.map((url, idx) => (
+                  <div key={idx} style={{ background: "#111", borderRadius: "8px", padding: "0.5rem", border: "1px solid #333" }}>
+                    <img src={url} alt={`Manga Page ${idx + 1}`} style={{ width: "100%", borderRadius: "4px", display: "block", marginBottom: "0.5rem" }} />
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontSize: "0.8rem", color: "#aaa" }}>Page {idx + 1}</span>
+                      <a href={url} target="_blank" rel="noreferrer" style={{ color: "var(--accent-color)", display: "flex", alignItems: "center", gap: "0.25rem", fontSize: "0.8rem", textDecoration: "none" }}>
+                        View <ExternalLink size={12} />
+                      </a>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="results-grid">
         <div className="result-card video-card">
           <div className="card-header">

@@ -9,7 +9,7 @@ function App() {
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/convert" element={<ConverterPage />} />
-      <Route path="/manga-generator" element={<MangaGenerator />} />
+      <Route path="/manga-generator" element={<ConverterPage />} />
     </Routes>
   );
 }

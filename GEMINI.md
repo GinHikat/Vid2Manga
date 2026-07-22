@@ -205,6 +205,19 @@ graph TD
 
 ## Development Log
 
+- **Dockerfile Audit & Cloud Production Hardening: 2026-07-22**
+  - Updated [`Dockerfile`](file:///d:/Study/Education/Projects/Vid2Manga/Dockerfile) adding `libgl1`, `libglib2.0-0`, `git`, and `torchvision` system packages to prevent OpenCV container import crashes (`libGL.so.1`).
+  - Configured `PYTHONPATH="/workspace:/workspace/App/backend"` and automated `data/input` and `data/output` directory creation.
+
+- **Live Pipeline Progress Streaming: 2026-07-22**
+  - Added `progress` field to `Task` model in `modules/task_manager.py` and `update_task_progress` helper.
+  - Wired real-time progress callbacks in `process_video_to_manga_volume` ([`end_to_end_vid2manga.py`](file:///d:/Study/Education/Projects/Vid2Manga/modules/frame/end_to_end_vid2manga.py)) streaming step status `[1/5] Extracting WAV` -> `[2/5] STT & Diarization` -> `[3/5] Keyframe Extraction` -> `[4/5] Timestamp Alignment` -> `[5/5] Page Compositing (Face Protection)`.
+  - Updated `VideoUpload.jsx` and `ConverterPage.jsx` to poll and render step progress live inside the loading overlay!
+
+- **Unified Vid2Manga Studio Workbench: 2026-07-22**
+  - Unified Video Converter and Image Layout Generator into 1 single **Vid2Manga Studio Workbench** ([`ConverterPage.jsx`](file:///d:/Study/Education/Projects/Vid2Manga/App/frontend/src/pages/ConverterPage.jsx)).
+  - Added mode toggle buttons (**Video to Manga** vs **Image Layout Studio**), allowing users to convert raw video clips or generate custom image-set layouts within the exact same studio workspace.
+
 - **Placed Bubbles Mask & Close-up Top Clearance: 2026-07-22**
   - Integrated `placed_bubbles_mask` tracking in `create_manga_page_with_dialogue` ([`manga_processor.py`](file:///d:/Study/Education/Projects/Vid2Manga/modules/frame/manga_processor.py)) with a $100,000$ penalty multiplier to eliminate any overlapping between multiple speech bubbles in a panel.
   - Implemented character coverage checking (`person_coverage > 0.35`): forces speech bubbles to top panel margins (`cy = margin_y`) on close-up character shots, ensuring bubbles never sit over character chests, necks, or faces.
