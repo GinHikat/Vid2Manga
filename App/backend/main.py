@@ -5,10 +5,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-# Add project root to sys.path to find the 'modules' directory
-root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-if root_dir not in sys.path:
-    sys.path.append(root_dir)
+# Add App/backend and project root to sys.path to find 'core', 'schemas', and 'modules'
+backend_dir = os.path.dirname(os.path.abspath(__file__))
+root_dir = os.path.abspath(os.path.join(backend_dir, "..", ".."))
+for d in [backend_dir, root_dir]:
+    if d not in sys.path:
+        sys.path.insert(0, d)
 
 from core.config import settings
 from api.v1.api import router as api_router
