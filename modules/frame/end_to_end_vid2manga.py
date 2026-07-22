@@ -507,7 +507,8 @@ def process_video_to_manga_volume(
     output_pdf_name: str = None,
     page_width: int = 1000,
     page_height: int = 1400,
-    seed: int = None
+    seed: int = None,
+    progress_callback = None
 ) -> dict:
     """Master pipeline orchestrator converting a video into a multi-page manga PDF volume.
 

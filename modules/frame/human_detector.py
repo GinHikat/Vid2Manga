@@ -3,7 +3,6 @@ import cv2
 import torch
 import numpy as np
 from PIL import Image
-from transformers import Mask2FormerForUniversalSegmentation, Mask2FormerImageProcessor
 from typing import Tuple, List, Dict, Any, Optional
 
 class PersonSegmenter:
@@ -24,6 +23,7 @@ class PersonSegmenter:
     def load(self):
         """Lazy-loads the Mask2Former model and processor into memory."""
         if self.model is None:
+            from transformers import Mask2FormerForUniversalSegmentation, Mask2FormerImageProcessor
             self.model = Mask2FormerForUniversalSegmentation.from_pretrained(
                 self.checkpoint
             ).to(self.device)
