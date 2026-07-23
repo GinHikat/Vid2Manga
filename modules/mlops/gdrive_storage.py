@@ -52,10 +52,11 @@ def get_drive_service(creds_path: Optional[str] = None, scopes: Optional[List[st
         scopes = ['https://www.googleapis.com/auth/drive']
 
     creds = service_account.Credentials.from_service_account_file(creds_path, scopes=scopes)
-    return build('drive', 'v3', credentials=creds)
+    return build('drive', 'v3', credentials=creds, cache_discovery=False)
 
 def is_gdrive_available() -> bool:
     """Helper function to check if Google Drive API is configured and accessible."""
+    load_dotenv()
     folder_id = os.getenv("GOOGLE_DRIVE_FOLDER_ID") or getattr(settings, "GOOGLE_DRIVE_FOLDER_ID", None)
     if not folder_id:
         return False

@@ -15,13 +15,23 @@
 
 ---
 
+## 🌐 Deployed Cloud App & Live Server
+
+- **Live Frontend Studio Workbench**: [`https://vid2-manga.vercel.app/`](https://vid2-manga.vercel.app/)
+- **Live Backend API Service**: [`https://vid2manga.onrender.com`](https://vid2manga.onrender.com)
+
+---
+
 ## 📢 News & Milestones
 
+- **[2026-07-23]** ☁️ **Google Drive Cloud Sync & Distributed Celery MLOps Engine**:
+  - **Google Drive Storage Sync**: Automatic cross-storage input video ingress (`input/`) and output PDF/PNG volume egress (`output/`) with direct Google Drive CDN links and deduplication.
+  - **ONNX INT8 Quantization Engine**: PyTorch-to-ONNX Mask2Former INT8 computational graph quantization reducing memory usage and accelerating CPU inference.
+  - **Distributed Celery + Redis Task Queue**: Asynchronous background job execution with live step-by-step progress streaming (`[1/5]` to `[5/5]`) and automatic pure-backend fallback.
+  - **Automated CI/CD Pipeline**: GitHub Actions workflow running automated unit tests, system dependencies (`ffmpeg`, `libgl1`), and Docker Buildx container compilation to GHCR.
 - **[2026-07-22]** 🛡️ **Face Protection & Persistent Speaker Mapping Engine**: Integrated `face_head_mask` protection, persistent speaker-to-character mapping (`Speaker 0` $\to$ `Person 0`, `Speaker 1` $\to$ `Person 1`), same-speaker turn merging, $w \ge 260\text{px}$ frame bounds, dynamic font scaling, and 2px black panel borders.
 - **[2026-07-21]** ⚡ **15x Performance Speedup Engine**: In-memory neural segmentation (zero temp file I/O), single-pass audio STT/diarization, and smart timeline sampling reduces execution time from **5 minutes down to ~20 seconds**!
 - **[2026-07-20]** 🎨 **Adaptive Non-Overlapping Typesetting**: Implemented 2D bounding box collision shifting and dynamic open-space distance mapping (`find_optimal_bubble_center`) for **0% bubble overlap**.
-- **[2026-07-15]** 🎙️ **Zero-Shot ECAPA-TDNN Diarization**: Integrated standalone 192-dimensional PyTorch speaker embeddings and AHC clustering with Python `wave` stdlib zero-dependency fallback.
-- **[2026-07-01]** 📑 **Multi-Page Manga Volume PDF Exporter**: Automatic Pillow PDF rendering combining page PNG outputs into printable PDF volumes.
 
 ---
 
@@ -29,13 +39,13 @@
 
 Vid2Manga bridges video content and manga storytelling. Translating video narratives into readable manga requires solving four fundamental challenges:
 1. **Temporal Partitioning**: Extracting representative keyframes while preserving narrative progression ($7.0\text{s}$ max scene gap safety constraint).
-2. **Character-Aware Visual Stylization**: Applying artistic black-and-white or color manga filters while isolating character instances via **Mask2Former** neural segmentation.
+2. **Character-Aware Visual Stylization**: Applying artistic black-and-white or color manga filters while isolating character instances via **Mask2Former ONNX INT8** neural segmentation.
 3. **Multi-Speaker Diarization & Persistent Context**: Extracting dialogue audio and attributing speech turns to individual characters via **Whisper STT** and **ECAPA-TDNN** with persistent speaker-to-person mapping.
 4. **Collision-Free & Face-Protected Typesetting**: Placing speech bubbles in open background space using `face_head_mask` protection, same-speaker turn merging, dynamic font scaling, and 2px panel frame borders.
 
-```
+```text
 +------------------+     +--------------------+     +---------------------+     +----------------------------+
-|   Input Video    | --> | Mask2Former        | --> | ECAPA-TDNN          | --> | Face-Protected Bubble      | --> Multi-Page PDF
+|   Input Video    | --> | Mask2Former (ONNX) | --> | ECAPA-TDNN          | --> | Face-Protected Bubble      | --> Multi-Page PDF
 | (MP4 / MKV / AVI)|     | Person Segmenter   |     | Speaker Diarizer    |     | Typesetting (v2)           |     Manga Volume
 +------------------+     +--------------------+     +---------------------+     +----------------------------+
 ```
@@ -60,35 +70,7 @@ Vid2Manga bridges video content and manga storytelling. Translating video narrat
 
 ---
 
-## 📊 Performance Benchmarks (15x Speedup)
-
-By replacing disk I/O file writing with in-memory NumPy/PIL array passing and reusing precomputed speech segments across page loops, Vid2Manga achieves an **11x-15x compute reduction**:
-
-| Pipeline Stage | Baseline Execution | **Vid2Manga (Optimized)** | Speedup |
-| --- | --- | --- | --- |
-| **Mask2Former Inference** | 469 passes (154/page) | **42 passes (14/page)** | **11.2x Faster** |
-| **Disk I/O Temp Files** | 469 file writes/deletes | **0 file writes (In-Memory)** | **Infinitely Faster** |
-| **Audio STT & Diarization** | 3 executions (per page) | **1 execution (Shared pass)** | **3.0x Faster** |
-| **Total Volume Runtime** | ~300 seconds (5 min) | **~20 seconds** | **15.0x Faster** |
-
-### v2 Quality Improvements
-
-| Feature | Before v2 | **v2 (Current)** |
-| --- | --- | --- |
-| **Speech Bubble Face Overlap** | Frequent | **0% (face_head_mask protection)** |
-| **Bubble-on-Bubble Collision** | Frequent | **0% (placed_bubbles_mask + 100k penalty)** |
-| **Close-Up Shot Clearance** | No constraint | **Auto top-margin forced (coverage > 35%)** |
-| **Same-Speaker Dialogue** | Separate bubbles | **Merged into 1 bubble per speaker** |
-| **Panel Minimum Size** | Unconstrained | **w >= 260px, h >= 240px enforced** |
-| **Font Overflow** | Clipped/bleeding | **Dynamic scaling 15px -> 8px + word wrap** |
-| **Panel Borders** | None | **2px black inter-panel borders** |
-| **Speaker-Person Mapping** | Per-page reset | **Persistent across entire volume session** |
-
----
-
 ## 📂 Architecture & Directory Structure
-
-The visual and speech processing layers are organized into 4 primary function category modules and 1 master prototype orchestrator:
 
 ```text
 Vid2Manga/
@@ -106,22 +88,28 @@ Vid2Manga/
 │   │   ├── video_processor.py    # Keyframe extraction & video partitioning
 │   │   ├── manga_processor.py    # Layout tree, stylization & PDF volume export
 │   │   ├── bubble_processor.py   # Bubble geometry, typesetting & open-space search
-│   │   ├── human_detector.py    # Mask2Former person instance segmenter
+│   │   ├── human_detector.py     # Mask2Former person instance segmenter (PyTorch + ONNX)
 │   │   └── end_to_end_vid2manga.py # Master prototype pipeline & orchestrator
+│   ├── mlops/                    # Production MLOps Infrastructure
+│   │   ├── celery_app.py         # Celery & Redis task queue configuration
+│   │   ├── tasks.py              # Celery background worker tasks
+│   │   ├── gdrive_storage.py     # Google Drive API storage integration
+│   │   └── quantize_models.py    # PyTorch-to-ONNX INT8 quantization engine
 │   └── speech/                   # Audio & Dialogue Processing Architecture
 │       ├── process_audio.py      # Audio splitting & Whisper STT orchestration
 │       ├── diarization.py        # Local zero-shot speaker diarizer (AHC)
 │       ├── ecapa_tdnn.py         # PyTorch 192-dim speaker embedding model
 │       └── gcp_speech.py         # Google Cloud Speech-to-Text API v1
+├── .github/workflows/ci-cd.yml   # GitHub Actions CI/CD Pipeline
+├── Dockerfile                    # Containerization Build Manifest
 ├── GEMINI.md                     # Project blueprint & developer guide
-├── state.md                      # Pipeline status roadmap
 ├── requirements.txt              # Python dependencies
 └── README.md                     # Project documentation
 ```
 
 ---
 
-## ⚡ Quick Start & Usage
+## ⚡ Quick Start & Running the System
 
 ### 1. Environment Installation
 
@@ -140,66 +128,72 @@ pip install -r requirements.txt
 
 *Note: Ensure system `ffmpeg` is installed and added to system PATH.*
 
-### 2. Running Master Prototype Pipeline
+---
 
-Run the full end-to-end pipeline on any video file via the test runner:
+### 2. Environment Configuration (`.env`)
 
-```bash
-python modules/test/run_full_video_pipeline.py
+Create a `.env` file in the root directory:
+
+```env
+REDIS_URL="rediss://default:your_upstash_redis_password@your-redis-host:6379"
+GOOGLE_DRIVE_FOLDER_ID="your_google_drive_folder_id"
+GOOGLE_APPLICATION_CREDENTIALS="secrets/ggsheet_credentials.json"
+USE_WHISPER_ONLY=true
 ```
 
-Or invoke the orchestrator directly in Python:
+---
 
-```python
-from modules.frame.end_to_end_vid2manga import process_video_to_manga_volume
+### 3. Running the Full System
 
-result = process_video_to_manga_volume(
-    video_path="data/video/sample_vid.mp4",
-    num_frames_per_page=7,
-    output_pdf_name="my_manga_volume.pdf"
-)
-print(f"PDF saved to: {result['pdf_path']}")
-print(f"Total pages: {result['total_pages']}, Total keyframes: {result['total_keyframes']}")
+For the full production experience (distributed background task queue with real-time live step progress updates), run the services in 3 separate terminal windows:
+
+#### Terminal 1: Celery Distributed Worker Queue
+```bash
+# From project root
+conda activate vid2manga
+celery -A modules.mlops.celery_app worker --loglevel=info --pool=solo
 ```
 
-The pipeline executes five stages automatically:
-1. **Audio Extraction** (FFmpeg 16kHz mono WAV)
-2. **Single-Pass STT & Diarization** (Whisper + ECAPA-TDNN AHC)
-3. **Scene-Aware Keyframe Extraction** (HSV histogram, 7s max gap)
-4. **Timestamp Alignment** (FrameDialoguePair construction)
-5. **Multi-Page Speech Bubble Compositing** (Face-protected, speaker-separated PDF)
-
-### 3. Launching Full-Stack Application
-
-**Start FastAPI Backend Service:**
-
+#### Terminal 2: FastAPI Backend Server
 ```bash
+# From project root
+conda activate vid2manga
 cd App/backend
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+python main.py
+
+# Or if you prefer to use Docker
+# Pull pre-packaged backend container from GitHub Container Registry (GHCR)
+docker pull ghcr.io/ginhikat/vid2manga:latest
+
+# Run backend container locally on port 8000 (replaces Terminal 2)
+docker run -d -p 8000:8000 --env-file .env --name vid2manga-backend ghcr.io/ginhikat/vid2manga:latest
 ```
 
-**Start React Frontend UI:**
-
+#### Terminal 3: React Frontend UI
 ```bash
 cd App/frontend
 npm install
 npm run dev
 ```
 
+> ⚠️ **Important Cloud Execution Note**: To process videos uploaded to the live cloud application ([`vid2-manga.vercel.app`](https://vid2-manga.vercel.app/)) using your local PC GPU/CPU resources, **make sure to run Terminal 1 (Celery worker process) locally first**:
+> ```bash
+> conda activate vid2manga
+> celery -A modules.mlops.celery_app worker --loglevel=info --pool=solo
+> ```
+> *When your local Celery worker is online, any video submitted to the live cloud app is pushed to Upstash Redis, automatically processed by your local worker engine, and synced straight to Google Drive!*
+
+*Note: If Celery worker is offline, the backend server automatically falls back to in-memory `BackgroundTasks` without breaking execution.*
+
 ---
+
 
 ## 🧪 Automated Testing
 
-Run the full unittest suite covering keyframe extraction, timestamp matching, manga compositing, and end-to-end pipeline:
+Run the full unittest suite covering keyframe extraction, timestamp matching, manga compositing, Google Drive storage, and end-to-end pipeline:
 
 ```bash
-python -m unittest discover -s modules/test -p "test_*.py"
-```
-
-Run the full video pipeline integration test:
-
-```bash
-python modules/test/run_full_video_pipeline.py
+python -m unittest discover -s tests/unit -p "test_*.py"
 ```
 
 ---
