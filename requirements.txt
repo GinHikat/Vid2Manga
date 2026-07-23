@@ -17,6 +17,7 @@ scikit-learn
 soundfile
 onnx
 onnxruntime
+onnxscript
 
 pytest
 pytest-asyncio

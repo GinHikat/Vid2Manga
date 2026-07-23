@@ -56,6 +56,7 @@ To provide a seamless, end-to-end tool that converts various video formats (incl
 5. **Sanitization**: Stictly enforce "No Emojis" and "No Special Characters" in all code and commits.
 6. **Orientation**: Before you execute something, read this `GEMINI.md` file first to get a grasp of what is in the codebase and what has been done so far.
 7. **Log Unification**: After each 5 new changes, concat the logs into 1 unified one with consistent information flow.
+8. **No Auto Commits**: Never perform automatic `git commit` or `git push` commands. Always present changes and test results to the user so that the user manually performs all commits.
 
 ---
 
@@ -208,6 +209,7 @@ graph TD
 - **ONNX INT8 Model Quantization Engine: 2026-07-23**
   - Created [`modules/mlops/quantize_models.py`](file:///d:/Study/Education/Projects/Vid2Manga/modules/mlops/quantize_models.py) establishing automated PyTorch to ONNX computational graph export, dynamic INT8 quantization (`QuantType.QUInt8`), and lightweight `ONNXPersonSegmenter` C++ runtime inference wrapper (`CPUExecutionProvider`).
   - Added `RUN python modules/mlops/quantize_models.py` build step to [`Dockerfile`](file:///d:/Study/Education/Projects/Vid2Manga/Dockerfile) to pre-bake quantized model binaries directly into production container image layers.
+  - Integrated ONNX Runtime auto-detection inside `PersonSegmenter` in [`modules/frame/human_detector.py`](file:///d:/Study/Education/Projects/Vid2Manga/modules/frame/human_detector.py) with automatic PyTorch fallback when `.onnx` weights are missing.
 
 - **GitHub Actions CI/CD Pipeline Setup: 2026-07-23**
   - Created [`.github/workflows/ci-cd.yml`](file:///d:/Study/Education/Projects/Vid2Manga/.github/workflows/ci-cd.yml) establishing automated unit testing, system dependency provisioning (`ffmpeg`, `libgl1`), CPU PyTorch wheel caching, and Docker Buildx container compilation to GitHub Container Registry (`ghcr.io`).
