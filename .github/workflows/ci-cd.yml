@@ -45,6 +45,8 @@ jobs:
 
       # Step 5: Run Unit Test Suite (Runs in <20 seconds!)
       - name: Run Unit Tests
+        env:
+          PYTHONPATH: .
         run: |
           python -m unittest discover -s modules/test -p "test_*.py"
 
