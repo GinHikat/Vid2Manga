@@ -50,7 +50,7 @@ except ImportError:
     pass
 
 def is_redis_available() -> bool:
-    """Helper function to check if Redis broker and Celery are available."""
+    """Helper function to check if Redis broker connection is reachable."""
     if celery_app is None or not settings.REDIS_URL:
         return False
     try:
@@ -58,8 +58,18 @@ def is_redis_available() -> bool:
         url = settings.REDIS_URL
         if url.startswith("rediss://") and "ssl_cert_reqs" not in url:
             url = url + ("&" if "?" in url else "?") + "ssl_cert_reqs=none"
-        client = redis.Redis.from_url(url, socket_timeout=3.0)
+        client = redis.Redis.from_url(url, socket_timeout=2.0)
         return client.ping()
     except Exception as e:
-        print(f"is_redis_available check failed: {e}")
+        return False
+
+def is_celery_worker_active() -> bool:
+    """Helper function to check if an active Celery worker process is online and listening."""
+    if not is_redis_available():
+        return False
+    try:
+        inspect = celery_app.control.inspect(timeout=0.5)
+        workers = inspect.ping()
+        return bool(workers and len(workers) > 0)
+    except Exception:
         return False

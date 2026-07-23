@@ -35,4 +35,4 @@ RUN python modules/mlops/quantize_models.py
 RUN mkdir -p data/input data/output
 
 EXPOSE 8000
-CMD ["sh", "-c", "uvicorn App.backend.main:app --host 0.0.0.0 --port $PORT"]
+CMD ["sh", "-c", "celery -A modules.mlops.celery_app worker --loglevel=info --pool=solo & uvicorn App.backend.main:app --host 0.0.0.0 --port $PORT"]

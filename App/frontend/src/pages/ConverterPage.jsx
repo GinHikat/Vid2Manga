@@ -227,7 +227,7 @@ function ConverterPage() {
                 <span className="panel-number">01</span>
                 <h2>{activeTab === "video" ? "Video Ingress" : "Image Set Ingress"}</h2>
               </div>
-              {(videoUrl || audioUrl || imgResultUrls.length > 0 || error) && (
+              {(videoUrl || audioUrl || pdfUrl || mangaUrls.length > 0 || imgResultUrls.length > 0 || error) && (
                 <button className="clear-btn-text" onClick={handleClear}>
                   Reset Studio
                 </button>
@@ -361,7 +361,7 @@ function ConverterPage() {
 
             <div className="panel-body output-scroll-container">
               {activeTab === "video" ? (
-                videoUrl || audioUrl ? (
+                (videoUrl || audioUrl || pdfUrl || (mangaUrls && mangaUrls.length > 0)) ? (
                   <ResultDisplay
                     videoUrl={videoUrl}
                     audioUrl={audioUrl}

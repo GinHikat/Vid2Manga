@@ -9,7 +9,7 @@ from modules.frame.video_processor import process_video_task
 from modules.task_manager import create_task, get_task
 from modules.frame.manga_processor import process_manga_generation
 
-from modules.mlops.celery_app import is_redis_available
+from modules.mlops.celery_app import is_redis_available, is_celery_worker_active, celery_app
 from modules.mlops.tasks import process_video_celery_task
 from celery.result import AsyncResult
 
@@ -29,11 +29,23 @@ async def convert_video(
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
     
-    # Try Celery task dispatch if Redis message broker is online
-    if is_redis_available():
+    # Upload to Google Drive if configured for cross-storage worker access
+    from modules.mlops.gdrive_storage import is_gdrive_available, upload_file_to_drive
+    
+    target_video_param = file_path
+    if is_gdrive_available():
+        try:
+            drive_res = upload_file_to_drive(file_path, drive_filename=file.filename, subfolder_name="input")
+            target_video_param = f"gdrive:{drive_res['id']}"
+        except Exception as e:
+            print(f"Warning: Upload to Google Drive failed, using local path: {e}")
+
+    # Try Celery task dispatch if Redis message broker and an active worker are online
+    if is_celery_worker_active():
         try:
             async_result = process_video_celery_task.delay(
-                video_path=file_path,
+                video_path=target_video_param,
+                filename=file.filename,
                 num_frames_per_page=7,
                 stylize_style="c",
                 language=language
@@ -58,7 +70,7 @@ async def get_status(task_id: str):
     # Query Celery Result Backend if Redis is reachable
     if is_redis_available():
         try:
-            res = AsyncResult(task_id)
+            res = AsyncResult(task_id, app=celery_app)
             if res.state == "PENDING":
                 return {"id": task_id, "status": "pending", "progress": "Task queued in Redis"}
             elif res.state == "PROGRESS":

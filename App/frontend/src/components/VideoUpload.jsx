@@ -90,12 +90,14 @@ const VideoUpload = ({
   };
 
   const pollTaskStatus = async (taskId, filename) => {
+    let consecutiveErrors = 0;
     const interval = setInterval(async () => {
       try {
         const statusRes = await axios.get(
           `${API_BASE_URL}/status/${taskId}`,
         );
         const task = statusRes.data;
+        consecutiveErrors = 0; // Reset error counter on successful response
 
         if (task.progress && onProgressUpdate) {
           onProgressUpdate(task.progress);
@@ -103,15 +105,15 @@ const VideoUpload = ({
 
         if (task.status === "completed") {
           clearInterval(interval);
-          const result = task.result;
+          const result = task.result || {};
 
           const baseUrl = API_BASE_URL.replace(/\/api$/, "");
-          const video = result.video_url.startsWith("http")
-            ? result.video_url
-            : `${baseUrl}${result.video_url}`;
-          const audio = result.audio_url.startsWith("http")
-            ? result.audio_url
-            : `${baseUrl}${result.audio_url}`;
+          const video = result.video_url
+            ? (result.video_url.startsWith("http") ? result.video_url : `${baseUrl}${result.video_url}`)
+            : "";
+          const audio = result.audio_url
+            ? (result.audio_url.startsWith("http") ? result.audio_url : `${baseUrl}${result.audio_url}`)
+            : "";
 
           const pdf = result.pdf_url
             ? (result.pdf_url.startsWith("http") ? result.pdf_url : `${baseUrl}${result.pdf_url}`)
@@ -126,9 +128,12 @@ const VideoUpload = ({
           onError(`Processing failed: ${task.error}`);
         }
       } catch (err) {
-        clearInterval(interval);
-        console.error(err);
-        onError("Error checking task status.");
+        consecutiveErrors += 1;
+        console.warn(`Polling task status attempt ${consecutiveErrors} failed:`, err);
+        if (consecutiveErrors >= 5) {
+          clearInterval(interval);
+          onError("Error checking task status after multiple retries.");
+        }
       }
     }, 1500); // Poll every 1.5 seconds
   };

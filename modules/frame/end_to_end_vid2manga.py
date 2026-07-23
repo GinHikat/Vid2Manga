@@ -540,7 +540,7 @@ def process_video_to_manga_volume(
 
     base_name = os.path.splitext(os.path.basename(video_path))[0]
     if output_pdf_name is None:
-        output_pdf_name = f"{base_name}_manga_volume.pdf"
+        output_pdf_name = f"{base_name}_manga.pdf"
 
     # Step 1: Audio extraction & Speech STT/Diarization
     report("[1/5] Extracting 16kHz mono WAV audio and soundless video...")
@@ -614,6 +614,8 @@ def process_video_to_manga_volume(
     pdf_rel = os.path.relpath(pdf_save_path, settings.OUTPUT_DIR).replace("\\", "/")
 
     return {
+        "video_url": f"/output/{os.path.basename(video_path)}",
+        "audio_url": f"/output/{os.path.basename(audio_path)}" if 'audio_path' in locals() and os.path.exists(audio_path) else "",
         "pdf_path": os.path.abspath(pdf_save_path),
         "pdf_url": f"/output/{pdf_rel}",
         "manga_urls": page_urls,

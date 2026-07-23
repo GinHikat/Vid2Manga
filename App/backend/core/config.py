@@ -13,6 +13,7 @@ class Settings:
     INPUT_DIR: str = os.path.join(DATA_DIR, "input")
     OUTPUT_DIR: str = os.path.join(DATA_DIR, "output")
     REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+    GOOGLE_DRIVE_FOLDER_ID: str = os.getenv("GOOGLE_DRIVE_FOLDER_ID", "")
 
     CORS_ORIGINS: list = ["*"]
 

@@ -206,6 +206,11 @@ graph TD
 
 ## Development Log
 
+- **Google Drive Storage & Auto-Cleanup: 2026-07-23**
+  - Created [`modules/mlops/gdrive_storage.py`](file:///d:/Study/Education/Projects/Vid2Manga/modules/mlops/gdrive_storage.py) implementing Google Drive API service account auth (`googleapiclient`), file upload (`MediaFileUpload`), and file download (`MediaIoBaseDownload`).
+  - Enforced consistent output naming (`sample_file_manga.pdf`) and added automatic page PNG cleanup in [`modules/frame/end_to_end_vid2manga.py`](file:///d:/Study/Education/Projects/Vid2Manga/modules/frame/end_to_end_vid2manga.py) to conserve disk space.
+  - Updated [`modules/mlops/tasks.py`](file:///d:/Study/Education/Projects/Vid2Manga/modules/mlops/tasks.py) and [`App/backend/api/v1/api.py`](file:///d:/Study/Education/Projects/Vid2Manga/App/backend/api/v1/api.py) for cross-storage file sharing between Render Web API and Celery workers.
+
 - **Asynchronous Task Architecture (Celery + Redis): 2026-07-23**
   - Created [`modules/mlops/celery_app.py`](file:///d:/Study/Education/Projects/Vid2Manga/modules/mlops/celery_app.py) and [`modules/mlops/tasks.py`](file:///d:/Study/Education/Projects/Vid2Manga/modules/mlops/tasks.py) establishing distributed Celery background worker tasks with real-time state progress tracking.
   - Refactored `/api/convert` and `/api/status/{task_id}` in [`App/backend/api/v1/api.py`](file:///d:/Study/Education/Projects/Vid2Manga/App/backend/api/v1/api.py) to support dual-mode Celery dispatch with automatic `BackgroundTasks` fallback.

@@ -314,6 +314,15 @@ async def process_video_task(task_id: str, file_location: str, original_filename
 
         manga_res = process_video_to_manga_volume(file_location, language=language, progress_callback=progress_cb)
 
+        from modules.mlops.gdrive_storage import is_gdrive_available, upload_file_to_drive
+        if is_gdrive_available() and "pdf_path" in manga_res and os.path.exists(manga_res["pdf_path"]):
+            try:
+                base_name = os.path.splitext(os.path.basename(file_location))[0]
+                gdrive_res = upload_file_to_drive(manga_res["pdf_path"], drive_filename=f"{base_name}_manga.pdf")
+                manga_res["pdf_url"] = gdrive_res["web_view_link"]
+            except Exception as e:
+                print(f"Warning: Google Drive upload failed in process_video_task: {e}")
+
         audio_path, video_path = split_video_audio(file_location)
         audio_rel = os.path.relpath(audio_path, settings.OUTPUT_DIR).replace("\\", "/")
         video_rel = os.path.relpath(video_path, settings.OUTPUT_DIR).replace("\\", "/")
