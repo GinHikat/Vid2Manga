@@ -122,7 +122,10 @@ class PersonSegmenter:
             # Low-RAM ONNX Runtime C++ engine execution (<30MB framework RAM)
             inputs = self.processor(images=[image_small], return_tensors="np")
             onnx_inputs = {"pixel_values": inputs["pixel_values"]}
-            class_logits, mask_logits = self.onnx_session.run(None, onnx_inputs)
+            class_logits, mask_logits = self.onnx_session.run(
+                ["class_queries_logits", "masks_queries_logits"], 
+                onnx_inputs
+            )
             
             from transformers.modeling_outputs import ModelOutput
             raw_outputs = ModelOutput(
