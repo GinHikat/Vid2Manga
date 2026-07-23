@@ -206,6 +206,12 @@ graph TD
 
 ## Development Log
 
+- **Dual-Sample Video Selection & Mandatory Google Drive Celery Ingress: 2026-07-23**
+  - Updated `VideoUpload.jsx` ([`App/frontend/src/components/VideoUpload.jsx`](file:///d:/Study/Education/Projects/Vid2Manga/App/frontend/src/components/VideoUpload.jsx)) to support both **Sample 1 (`sample_vid.mp4`)** and **Sample 2 (`vid1.mp4`)** sample video buttons in the workbench UI.
+  - Copied `sample_vid.mp4` to `App/frontend/public/samples/` and compiled frontend bundle (`npm run build`).
+  - Added `run_gdrive_celery_test.py` ([`modules/test/run_gdrive_celery_test.py`](file:///d:/Study/Education/Projects/Vid2Manga/modules/test/run_gdrive_celery_test.py)) enabling local automated testing of end-to-end Google Drive storage ingress/egress and Celery task execution.
+  - Enforced mandatory `gdrive:<file_id>` validation in `api.py` to prevent broken local disk path dispatches across cloud and local environments.
+
 - **Google Drive Storage & Auto-Cleanup: 2026-07-23**
   - Created [`modules/mlops/gdrive_storage.py`](file:///d:/Study/Education/Projects/Vid2Manga/modules/mlops/gdrive_storage.py) implementing Google Drive API service account auth (`googleapiclient`), file upload (`MediaFileUpload`), and file download (`MediaIoBaseDownload`).
   - Enforced consistent output naming (`sample_file_manga.pdf`) and added automatic page PNG cleanup in [`modules/frame/end_to_end_vid2manga.py`](file:///d:/Study/Education/Projects/Vid2Manga/modules/frame/end_to_end_vid2manga.py) to conserve disk space.

@@ -142,12 +142,12 @@ const VideoUpload = ({
     inputRef.current.click();
   };
 
-  const handleLoadSample = async () => {
+  const handleLoadSample = async (sampleName = "sample_vid.mp4") => {
     try {
-      const response = await fetch("/samples/vid1.mp4");
+      const response = await fetch(`/samples/${sampleName}`);
       if (!response.ok) throw new Error("Sample file not found");
       const blob = await response.blob();
-      const file = new File([blob], "vid1.mp4", { type: "video/mp4" });
+      const file = new File([blob], sampleName, { type: "video/mp4" });
       handleFiles(file);
     } catch (err) {
       console.error(err);
@@ -235,19 +235,32 @@ const VideoUpload = ({
                   </div>
                   <h3>Drag & Drop your video here</h3>
                   <p>or</p>
-                  <div className="action-buttons" style={{ flexDirection: "column", gap: "0.5rem", maxWidth: "260px" }}>
-                    <button className="upload-btn primary-btn" onClick={onButtonClick}>
+                  <div className="action-buttons" style={{ flexDirection: "column", gap: "0.5rem", width: "100%", maxWidth: "280px" }}>
+                    <button className="upload-btn primary-btn" style={{ width: "100%" }} onClick={onButtonClick}>
                       Browse Files
                     </button>
-                    <button 
-                      className="upload-btn secondary-btn" 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleLoadSample();
-                      }}
-                    >
-                      Use Sample Video
-                    </button>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem", width: "100%" }}>
+                      <button 
+                        className="upload-btn secondary-btn" 
+                        style={{ fontSize: "0.78rem", padding: "0.55rem 0.25rem", width: "100%", justifyContent: "center", textAlign: "center" }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleLoadSample("sample_vid.mp4");
+                        }}
+                      >
+                        Sample 1 (Long)
+                      </button>
+                      <button 
+                        className="upload-btn secondary-btn" 
+                        style={{ fontSize: "0.78rem", padding: "0.55rem 0.25rem", width: "100%", justifyContent: "center", textAlign: "center" }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleLoadSample("vid1.mp4");
+                        }}
+                      >
+                        Sample 2 (Short)
+                      </button>
+                    </div>
                   </div>
                   <p className="hint" style={{ marginTop: "0.5rem" }}>Supports MP4, MOV, AVI</p>
                 </>

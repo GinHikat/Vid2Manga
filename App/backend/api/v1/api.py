@@ -40,19 +40,27 @@ async def convert_video(
         except Exception as e:
             print(f"Warning: Upload to Google Drive failed, using local path: {e}")
 
-    # Try Celery task dispatch ONLY if an active worker is confirmed online
+    # Try Celery task dispatch ONLY if an active worker is online AND Google Drive file ID is ready
     if is_celery_worker_active(timeout=1.5):
-        try:
-            async_result = process_video_celery_task.delay(
-                video_path=target_video_param,
-                filename=file.filename,
-                num_frames_per_page=7,
-                stylize_style="c",
-                language=language
-            )
-            return TaskResponse(task_id=async_result.id, status="pending")
-        except Exception as e:
-            print(f"Celery dispatch failed, falling back to BackgroundTasks: {e}")
+        if not target_video_param.startswith("gdrive:") and is_gdrive_available():
+            try:
+                drive_res = upload_file_to_drive(file_path, drive_filename=file.filename, subfolder_name="input")
+                target_video_param = f"gdrive:{drive_res['id']}"
+            except Exception as e:
+                print(f"Warning: Failed uploading to Google Drive for Celery dispatch: {e}")
+
+        if target_video_param.startswith("gdrive:"):
+            try:
+                async_result = process_video_celery_task.delay(
+                    video_path=target_video_param,
+                    filename=file.filename,
+                    num_frames_per_page=7,
+                    stylize_style="c",
+                    language=language
+                )
+                return TaskResponse(task_id=async_result.id, status="pending")
+            except Exception as e:
+                print(f"Celery dispatch failed, falling back to BackgroundTasks: {e}")
 
     # Fallback to in-memory BackgroundTasks
     task = create_task()

@@ -16,27 +16,38 @@ if celery_app is not None:
                 }
             )
 
-        # Check if video_path is a Google Drive file ID or cloud path
+        # Check if video_path is a Google Drive file ID or cloud/local path
         from modules.mlops.gdrive_storage import is_gdrive_available, download_file_from_drive, upload_file_to_drive, get_drive_file_id_by_name
         from core.config import settings
 
-        local_video_path = video_path
+        target_filename = filename if filename else os.path.basename(video_path)
+        local_video_path = os.path.abspath(os.path.join(settings.INPUT_DIR, target_filename))
 
         if video_path.startswith("gdrive:"):
             drive_file_id = video_path.replace("gdrive:", "")
-            target_filename = filename if filename else f"video_{drive_file_id[:8]}.mp4"
-            local_video_path = os.path.join(settings.INPUT_DIR, target_filename)
             if not os.path.exists(local_video_path):
                 progress_callback(f"[0/5] Downloading video from Google Drive (ID: {drive_file_id[:8]}...)...")
                 download_file_from_drive(drive_file_id, local_video_path)
         else:
-            target_filename = filename if filename else os.path.basename(video_path)
-            local_video_path = os.path.join(settings.INPUT_DIR, target_filename)
-            if not os.path.exists(local_video_path) and is_gdrive_available():
-                progress_callback(f"[0/5] Looking up {target_filename} in Google Drive input folder...")
-                g_id = get_drive_file_id_by_name(target_filename, subfolder_name="input")
-                if g_id:
-                    download_file_from_drive(g_id, local_video_path)
+            if os.path.exists(video_path):
+                local_video_path = os.path.abspath(video_path)
+            elif not os.path.exists(local_video_path):
+                # Search data/input case-insensitively
+                found = False
+                if os.path.exists(settings.INPUT_DIR):
+                    for fname in os.listdir(settings.INPUT_DIR):
+                        if fname.lower() == target_filename.lower():
+                            local_video_path = os.path.abspath(os.path.join(settings.INPUT_DIR, fname))
+                            found = True
+                            break
+                if not found and is_gdrive_available():
+                    try:
+                        progress_callback(f"[0/5] Looking up {target_filename} in Google Drive input folder...")
+                        g_id = get_drive_file_id_by_name(target_filename, subfolder_name="input")
+                        if g_id:
+                            download_file_from_drive(g_id, local_video_path)
+                    except Exception as e:
+                        print(f"Warning: Google Drive lookup error: {e}")
 
         result = process_video_to_manga_volume(
             video_path=local_video_path,
