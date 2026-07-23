@@ -10,6 +10,7 @@ class Settings:
     DATA_DIR: str = os.path.join(ROOT_DIR, "data")
     INPUT_DIR: str = os.path.join(DATA_DIR, "input")
     OUTPUT_DIR: str = os.path.join(DATA_DIR, "output")
+    REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
     CORS_ORIGINS: list = ["*"]
 

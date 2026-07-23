@@ -18,6 +18,8 @@ soundfile
 onnx
 onnxruntime
 onnxscript
+celery
+redis
 
 pytest
 pytest-asyncio

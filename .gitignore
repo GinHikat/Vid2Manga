@@ -11,6 +11,7 @@ secrets/
 .pytest_cache
 __pycache__/
 notebook/*
+tests/e2e/run_full_video_pipeline.py
 
 *.mp4
 *.mp3
