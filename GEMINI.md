@@ -205,6 +205,10 @@ graph TD
 
 ## Development Log
 
+- **ONNX INT8 Model Quantization Engine: 2026-07-23**
+  - Created [`modules/mlops/quantize_models.py`](file:///d:/Study/Education/Projects/Vid2Manga/modules/mlops/quantize_models.py) establishing automated PyTorch to ONNX computational graph export, dynamic INT8 quantization (`QuantType.QUInt8`), and lightweight `ONNXPersonSegmenter` C++ runtime inference wrapper (`CPUExecutionProvider`).
+  - Added `RUN python modules/mlops/quantize_models.py` build step to [`Dockerfile`](file:///d:/Study/Education/Projects/Vid2Manga/Dockerfile) to pre-bake quantized model binaries directly into production container image layers.
+
 - **GitHub Actions CI/CD Pipeline Setup: 2026-07-23**
   - Created [`.github/workflows/ci-cd.yml`](file:///d:/Study/Education/Projects/Vid2Manga/.github/workflows/ci-cd.yml) establishing automated unit testing, system dependency provisioning (`ffmpeg`, `libgl1`), CPU PyTorch wheel caching, and Docker Buildx container compilation to GitHub Container Registry (`ghcr.io`).
 

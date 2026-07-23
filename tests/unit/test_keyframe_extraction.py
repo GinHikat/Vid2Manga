@@ -15,13 +15,7 @@ from core.config import settings
 from modules.frame.video_processor import extract_keyframes
 
 def create_synthetic_test_video(video_path: str, duration_sec: float = 18.0, fps: float = 30.0):
-    """Generates a synthetic test video with scene changes and colored shapes.
-
-    Args:
-        video_path: Output video file path.
-        duration_sec: Duration of video in seconds.
-        fps: Frames per second.
-    """
+    """Generates a synthetic test video with scene changes and colored shapes."""
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     width, height = 640, 480
     out = cv2.VideoWriter(video_path, fourcc, fps, (width, height))
@@ -29,9 +23,6 @@ def create_synthetic_test_video(video_path: str, duration_sec: float = 18.0, fps
     total_frames = int(duration_sec * fps)
     for i in range(total_frames):
         t = i / fps
-        # Scene 1: Red background (0 - 5s)
-        # Scene 2: Green background with moving blue square (5s - 12s)
-        # Scene 3: Blue background (12s - 18s)
         if t < 5.0:
             frame = np.zeros((height, width, 3), dtype=np.uint8)
             frame[:, :] = (0, 0, 200)
@@ -51,7 +42,7 @@ class TestKeyframeExtraction(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.test_dir = os.path.join(settings.OUTPUT_DIR, "test_keyframes_tmp")
+        cls.test_dir = os.path.join(settings.OUTPUT_DIR, "test_keyframes_unit_tmp")
         os.makedirs(cls.test_dir, exist_ok=True)
         cls.video_path = os.path.join(cls.test_dir, "synthetic_test.mp4")
         create_synthetic_test_video(cls.video_path, duration_sec=18.0, fps=30.0)
@@ -85,7 +76,6 @@ class TestKeyframeExtraction(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        # Cleanup temporary files
         if os.path.exists(cls.test_dir):
             try:
                 import shutil

@@ -48,7 +48,7 @@ jobs:
         env:
           PYTHONPATH: .
         run: |
-          python -m unittest discover -s modules/test -p "test_*.py"
+          python -m unittest discover -s tests -p "test_*.py"
 
   # JOB 2: Build & Push Production Docker Image (if Job 1 succeeds)
   build-and-push:

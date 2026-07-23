@@ -28,6 +28,9 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Copy codebase
 COPY . .
 
+# Pre-bake quantized ONNX INT8 models during container build
+RUN python modules/mlops/quantize_models.py
+
 # Create input and output data directories
 RUN mkdir -p data/input data/output
 

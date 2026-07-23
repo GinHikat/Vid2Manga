@@ -2,8 +2,11 @@
 .vscode/
 App/backend/input/
 App/backend/output/
+App/backend/models_onnx/
 modules/speech/models/
 models/
+models_onnx/
+*.onnx
 secrets/
 .pytest_cache
 __pycache__/
