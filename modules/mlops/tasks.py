@@ -46,17 +46,30 @@ if celery_app is not None:
             progress_callback=progress_callback
         )
 
-        # Upload final PDF volume to Google Drive if available
-        if is_gdrive_available() and "pdf_path" in result and os.path.exists(result["pdf_path"]):
+        # Upload final PDF volume and individual manga page PNGs to Google Drive if available
+        if is_gdrive_available():
             try:
                 base_name = os.path.splitext(os.path.basename(local_video_path))[0]
-                pdf_drive_name = f"{base_name}_manga.pdf"
-                progress_callback(f"[5/5] Uploading final PDF volume ({pdf_drive_name}) to Google Drive...")
-                gdrive_res = upload_file_to_drive(result["pdf_path"], drive_filename=pdf_drive_name, subfolder_name="output")
-                result["gdrive_pdf_id"] = gdrive_res["id"]
-                result["gdrive_web_view_link"] = gdrive_res["web_view_link"]
-                result["gdrive_web_content_link"] = gdrive_res["web_content_link"]
-                result["pdf_url"] = gdrive_res["web_view_link"]
+                if "pdf_path" in result and os.path.exists(result["pdf_path"]):
+                    pdf_drive_name = f"{base_name}_manga.pdf"
+                    progress_callback(f"[5/5] Uploading final PDF volume ({pdf_drive_name}) to Google Drive...")
+                    gdrive_res = upload_file_to_drive(result["pdf_path"], drive_filename=pdf_drive_name, subfolder_name="output")
+                    result["gdrive_pdf_id"] = gdrive_res["id"]
+                    result["gdrive_web_view_link"] = gdrive_res["web_view_link"]
+                    result["gdrive_web_content_link"] = gdrive_res["web_content_link"]
+                    result["pdf_url"] = gdrive_res["web_view_link"]
+
+                page_gdrive_urls = []
+                for i, page_rel in enumerate(result.get("manga_urls", [])):
+                    page_filename = os.path.basename(page_rel)
+                    local_page_path = os.path.join(settings.OUTPUT_DIR, page_filename)
+                    if os.path.exists(local_page_path):
+                        img_res = upload_file_to_drive(local_page_path, drive_filename=page_filename, subfolder_name="output")
+                        page_gdrive_urls.append(img_res["direct_image_url"])
+                    else:
+                        page_gdrive_urls.append(page_rel)
+                if page_gdrive_urls:
+                    result["manga_urls"] = page_gdrive_urls
             except Exception as e:
                 print(f"Warning: Google Drive upload failed: {e}")
 

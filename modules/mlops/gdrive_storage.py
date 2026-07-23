@@ -200,7 +200,8 @@ def upload_file_to_drive(
         'id': file_id,
         'name': uploaded_file.get('name'),
         'web_view_link': uploaded_file.get('webViewLink', f"https://drive.google.com/file/d/{file_id}/view"),
-        'web_content_link': uploaded_file.get('webContentLink', f"https://drive.google.com/uc?id={file_id}&export=download")
+        'web_content_link': uploaded_file.get('webContentLink', f"https://drive.google.com/uc?id={file_id}&export=download"),
+        'direct_image_url': f"https://lh3.googleusercontent.com/d/{file_id}"
     }
 
 def download_file_from_drive(file_id: str, destination_path: str) -> str:

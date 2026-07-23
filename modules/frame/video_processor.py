@@ -315,11 +315,23 @@ async def process_video_task(task_id: str, file_location: str, original_filename
         manga_res = process_video_to_manga_volume(file_location, language=language, progress_callback=progress_cb)
 
         from modules.mlops.gdrive_storage import is_gdrive_available, upload_file_to_drive
-        if is_gdrive_available() and "pdf_path" in manga_res and os.path.exists(manga_res["pdf_path"]):
+        if is_gdrive_available():
             try:
                 base_name = os.path.splitext(os.path.basename(file_location))[0]
-                gdrive_res = upload_file_to_drive(manga_res["pdf_path"], drive_filename=f"{base_name}_manga.pdf")
-                manga_res["pdf_url"] = gdrive_res["web_view_link"]
+                if "pdf_path" in manga_res and os.path.exists(manga_res["pdf_path"]):
+                    gdrive_res = upload_file_to_drive(manga_res["pdf_path"], drive_filename=f"{base_name}_manga.pdf", subfolder_name="output")
+                    manga_res["pdf_url"] = gdrive_res["web_view_link"]
+                page_gdrive_urls = []
+                for i, page_rel in enumerate(manga_res.get("manga_urls", [])):
+                    page_filename = os.path.basename(page_rel)
+                    local_page_path = os.path.join(settings.OUTPUT_DIR, page_filename)
+                    if os.path.exists(local_page_path):
+                        img_res = upload_file_to_drive(local_page_path, drive_filename=page_filename, subfolder_name="output")
+                        page_gdrive_urls.append(img_res["direct_image_url"])
+                    else:
+                        page_gdrive_urls.append(page_rel)
+                if page_gdrive_urls:
+                    manga_res["manga_urls"] = page_gdrive_urls
             except Exception as e:
                 print(f"Warning: Google Drive upload failed in process_video_task: {e}")
 
