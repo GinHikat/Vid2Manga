@@ -63,12 +63,12 @@ def is_redis_available() -> bool:
     except Exception as e:
         return False
 
-def is_celery_worker_active() -> bool:
+def is_celery_worker_active(timeout: float = 1.5) -> bool:
     """Helper function to check if an active Celery worker process is online and listening."""
     if not is_redis_available():
         return False
     try:
-        inspect = celery_app.control.inspect(timeout=0.5)
+        inspect = celery_app.control.inspect(timeout=timeout)
         workers = inspect.ping()
         return bool(workers and len(workers) > 0)
     except Exception:

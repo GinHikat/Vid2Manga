@@ -40,8 +40,8 @@ async def convert_video(
         except Exception as e:
             print(f"Warning: Upload to Google Drive failed, using local path: {e}")
 
-    # Try Celery task dispatch if Redis message broker and an active worker are online
-    if is_celery_worker_active():
+    # Try Celery task dispatch ONLY if an active worker is confirmed online
+    if is_celery_worker_active(timeout=1.5):
         try:
             async_result = process_video_celery_task.delay(
                 video_path=target_video_param,
