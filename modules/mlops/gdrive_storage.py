@@ -99,6 +99,21 @@ def get_or_create_drive_subfolder(subfolder_name: str, parent_folder_id: Optiona
         print(f"Warning: Failed to get/create Google Drive subfolder '{subfolder_name}': {e}")
         return parent_folder_id
 
+def get_drive_file_id_by_name(filename: str, subfolder_name: Optional[str] = "input") -> Optional[str]:
+    """Finds Google Drive file ID by filename inside main or subfolder."""
+    try:
+        parent_id = get_or_create_drive_subfolder(subfolder_name) if subfolder_name else (os.getenv("GOOGLE_DRIVE_FOLDER_ID") or getattr(settings, "GOOGLE_DRIVE_FOLDER_ID", ""))
+        if not parent_id:
+            return None
+        service = get_drive_service()
+        query = f"'{parent_id}' in parents and name = '{filename}' and trashed = false"
+        res = service.files().list(q=query, fields="files(id, name)", supportsAllDrives=True, includeItemsFromAllDrives=True).execute()
+        files = res.get("files", [])
+        return files[0]["id"] if files else None
+    except Exception as e:
+        print(f"Warning: get_drive_file_id_by_name failed for '{filename}': {e}")
+        return None
+
 def upload_file_to_drive(
     file_path: str,
     folder_id: Optional[str] = None,

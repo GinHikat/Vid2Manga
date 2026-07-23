@@ -16,8 +16,8 @@ if celery_app is not None:
                 }
             )
 
-        # Check if video_path is a Google Drive file ID
-        from modules.mlops.gdrive_storage import is_gdrive_available, download_file_from_drive, upload_file_to_drive
+        # Check if video_path is a Google Drive file ID or cloud path
+        from modules.mlops.gdrive_storage import is_gdrive_available, download_file_from_drive, upload_file_to_drive, get_drive_file_id_by_name
         from core.config import settings
 
         local_video_path = video_path
@@ -26,10 +26,17 @@ if celery_app is not None:
             drive_file_id = video_path.replace("gdrive:", "")
             target_filename = filename if filename else f"video_{drive_file_id[:8]}.mp4"
             local_video_path = os.path.join(settings.INPUT_DIR, target_filename)
-            # Only download from Google Drive if file is not already in data/input
             if not os.path.exists(local_video_path):
                 progress_callback(f"[0/5] Downloading video from Google Drive (ID: {drive_file_id[:8]}...)...")
                 download_file_from_drive(drive_file_id, local_video_path)
+        else:
+            target_filename = filename if filename else os.path.basename(video_path)
+            local_video_path = os.path.join(settings.INPUT_DIR, target_filename)
+            if not os.path.exists(local_video_path) and is_gdrive_available():
+                progress_callback(f"[0/5] Looking up {target_filename} in Google Drive input folder...")
+                g_id = get_drive_file_id_by_name(target_filename, subfolder_name="input")
+                if g_id:
+                    download_file_from_drive(g_id, local_video_path)
 
         result = process_video_to_manga_volume(
             video_path=local_video_path,
