@@ -206,6 +206,11 @@ graph TD
 
 ## Development Log
 
+- **Asynchronous Task Architecture (Celery + Redis): 2026-07-23**
+  - Created [`modules/mlops/celery_app.py`](file:///d:/Study/Education/Projects/Vid2Manga/modules/mlops/celery_app.py) and [`modules/mlops/tasks.py`](file:///d:/Study/Education/Projects/Vid2Manga/modules/mlops/tasks.py) establishing distributed Celery background worker tasks with real-time state progress tracking.
+  - Refactored `/api/convert` and `/api/status/{task_id}` in [`App/backend/api/v1/api.py`](file:///d:/Study/Education/Projects/Vid2Manga/App/backend/api/v1/api.py) to support dual-mode Celery dispatch with automatic `BackgroundTasks` fallback.
+  - Updated [`Dockerfile`](file:///d:/Study/Education/Projects/Vid2Manga/Dockerfile) `CMD` to execute background Celery worker process (`celery worker --pool=solo &`) alongside Uvicorn inside 1 single container image layer.
+
 - **ONNX INT8 Model Quantization Engine: 2026-07-23**
   - Created [`modules/mlops/quantize_models.py`](file:///d:/Study/Education/Projects/Vid2Manga/modules/mlops/quantize_models.py) establishing automated PyTorch to ONNX computational graph export, dynamic INT8 quantization (`QuantType.QUInt8`), and lightweight `ONNXPersonSegmenter` C++ runtime inference wrapper (`CPUExecutionProvider`).
   - Added `RUN python modules/mlops/quantize_models.py` build step to [`Dockerfile`](file:///d:/Study/Education/Projects/Vid2Manga/Dockerfile) to pre-bake quantized model binaries directly into production container image layers.
