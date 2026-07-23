@@ -19,6 +19,7 @@ notebook/*
 *.jfif
 *.pdf
 images/
+learn/
 
 
 GEMINI.md

@@ -205,6 +205,15 @@ graph TD
 
 ## Development Log
 
+- **GitHub Actions CI/CD Pipeline Setup: 2026-07-23**
+  - Created [`.github/workflows/ci-cd.yml`](file:///d:/Study/Education/Projects/Vid2Manga/.github/workflows/ci-cd.yml) establishing automated unit testing, system dependency provisioning (`ffmpeg`, `libgl1`), CPU PyTorch wheel caching, and Docker Buildx container compilation to GitHub Container Registry (`ghcr.io`).
+
+- **Theoretical MLOps & DevOps Study Guide: 2026-07-22**
+  - Created [`MLOPS_THEORY_GUIDE.md`](file:///d:/Study/Education/Projects/Vid2Manga/MLOPS_THEORY_GUIDE.md) explaining core theoretical foundations: MLOps vs DevOps philosophies, mathematical FP32 to INT8 quantization formulas ($x \approx S \times (q - Z)$), Docker Copy-on-Write layering mechanics, asynchronous message brokers (Redis/Celery), and mobile Edge NPU execution.
+
+- **MLOps Architecture & Edge Roadmap Blueprint: 2026-07-22**
+  - Created [`MLOPS_ROADMAP.md`](file:///d:/Study/Education/Projects/Vid2Manga/MLOPS_ROADMAP.md) documenting production CI/CD GitHub Actions workflows, ONNX dynamic INT8 quantization, Celery worker queues, and edge/mobile/live RTSP stream processing architecture.
+
 - **Dockerfile Audit & Cloud Production Hardening: 2026-07-22**
   - Updated [`Dockerfile`](file:///d:/Study/Education/Projects/Vid2Manga/Dockerfile) adding `libgl1`, `libglib2.0-0`, `git`, and `torchvision` system packages to prevent OpenCV container import crashes (`libGL.so.1`).
   - Configured `PYTHONPATH="/workspace:/workspace/App/backend"` and automated `data/input` and `data/output` directory creation.
