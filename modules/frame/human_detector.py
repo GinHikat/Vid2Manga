@@ -19,22 +19,56 @@ class PersonSegmenter:
         self.checkpoint = checkpoint or "qubvel-hf/finetune-instance-segmentation-ade20k-mini-mask2former"
         self.model = None
         self.processor = None
+        self.onnx_session = None
+        self.use_onnx = False
+        self.id2label = None
 
     def load(self):
-        """Lazy-loads the Mask2Former model and processor into memory."""
-        if self.model is None:
+        """Lazy-loads ONNX INT8 model if available, otherwise loads PyTorch Mask2Former model."""
+        if self.model is None and self.onnx_session is None:
+            from core.config import settings
+            onnx_path = os.path.join(settings.BASE_DIR, "models_onnx", "mask2former_int8.onnx")
+            
+            # Auto-detect pre-baked ONNX INT8 model for ultra-low RAM usage (<200MB)
+            if os.path.exists(onnx_path):
+                try:
+                    import onnxruntime as ort
+                    from transformers import Mask2FormerImageProcessor, AutoConfig
+                    opts = ort.SessionOptions()
+                    opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+                    opts.intra_op_num_threads = 2
+                    self.onnx_session = ort.InferenceSession(
+                        onnx_path, 
+                        sess_options=opts, 
+                        providers=["CPUExecutionProvider"]
+                    )
+                    self.processor = Mask2FormerImageProcessor.from_pretrained(self.checkpoint)
+                    cfg = AutoConfig.from_pretrained(self.checkpoint)
+                    self.id2label = cfg.id2label
+                    self.use_onnx = True
+                    print(f"Loaded ONNX INT8 PersonSegmenter model from {onnx_path}!")
+                    return self
+                except Exception as e:
+                    print(f"ONNX initialization failed, falling back to PyTorch: {e}")
+
+            # PyTorch fallback
             from transformers import Mask2FormerForUniversalSegmentation, Mask2FormerImageProcessor
             self.model = Mask2FormerForUniversalSegmentation.from_pretrained(
                 self.checkpoint
             ).to(self.device)
             self.processor = Mask2FormerImageProcessor.from_pretrained(self.checkpoint)
             self.model.eval()
+            self.id2label = self.model.config.id2label
+            self.use_onnx = False
         return self
 
     def unload(self):
         """Frees model tensors and triggers garbage collection to prevent OOM."""
         self.model = None
         self.processor = None
+        self.onnx_session = None
+        self.use_onnx = False
+        self.id2label = None
         import gc
         gc.collect()
         if torch.cuda.is_available():
@@ -55,7 +89,7 @@ class PersonSegmenter:
                 - person_masks: List of binary masks (0 or 1) for each person instance.
                 - outputs: The raw post-processed output dictionary.
         """
-        if self.model is None:
+        if self.model is None and self.onnx_session is None:
             self.load()
             
         if isinstance(image_input, str):
@@ -84,21 +118,40 @@ class PersonSegmenter:
         else:
             image_small = image
 
-        # Inference wrapped in no_grad to prevent autograd graph memory leaks
-        with torch.no_grad():
-            inputs = self.processor(images=[image_small], return_tensors="pt").to(self.device)
-            raw_outputs = self.model(**inputs)
+        if self.use_onnx:
+            # Low-RAM ONNX Runtime C++ engine execution (<30MB framework RAM)
+            inputs = self.processor(images=[image_small], return_tensors="np")
+            onnx_inputs = {"pixel_values": inputs["pixel_values"]}
+            class_logits, mask_logits = self.onnx_session.run(None, onnx_inputs)
+            
+            from transformers.modeling_outputs import ModelOutput
+            raw_outputs = ModelOutput(
+                class_queries_logits=torch.from_numpy(class_logits),
+                masks_queries_logits=torch.from_numpy(mask_logits)
+            )
             outputs = self.processor.post_process_instance_segmentation(
-                raw_outputs, 
-                target_sizes=[image_np.shape[:2]], 
-                threshold=0.3, 
+                raw_outputs,
+                target_sizes=[image_np.shape[:2]],
+                threshold=0.3,
                 mask_threshold=0.3
             )[0]
-
-        instance_map = outputs["segmentation"].cpu().numpy()
+            instance_map = outputs["segmentation"].numpy() if hasattr(outputs["segmentation"], "numpy") else np.array(outputs["segmentation"])
+        else:
+            # Native PyTorch execution
+            with torch.no_grad():
+                inputs = self.processor(images=[image_small], return_tensors="pt").to(self.device)
+                raw_outputs = self.model(**inputs)
+                outputs = self.processor.post_process_instance_segmentation(
+                    raw_outputs, 
+                    target_sizes=[image_np.shape[:2]], 
+                    threshold=0.3, 
+                    mask_threshold=0.3
+                )[0]
+            instance_map = outputs["segmentation"].cpu().numpy()
+            del inputs, raw_outputs
 
         # Identify label ID for 'person'
-        person_label_id = next((k for k, v in self.model.config.id2label.items() if v == "person"), None)
+        person_label_id = next((k for k, v in self.id2label.items() if v == "person"), 12) if self.id2label else 12
         
         person_masks = []
         if person_label_id is not None:
@@ -112,6 +165,4 @@ class PersonSegmenter:
                     if area >= min_area:
                         person_masks.append(mask)
 
-        # Explicitly delete PyTorch tensors to prevent RAM accumulation
-        del inputs, raw_outputs, outputs
         return image_np, instance_map, person_masks, {}
